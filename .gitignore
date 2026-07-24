@@ -1,0 +1,5 @@
+# Configuración local de Claude Code (permisos específicos de esta máquina)
+.claude/settings.local.json
+
+# Export de CRM: puede contener datos personales de leads (nombre, whatsapp, pagos)
+CRM_*.csv

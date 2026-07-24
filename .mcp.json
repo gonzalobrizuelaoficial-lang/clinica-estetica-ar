@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "Zapier-MCP": {
+      "type": "http",
+      "url": "https://mcp.zapier.com/api/v1/connect"
+    },
+    "agent-browser": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "agent-browser-mcp"]
+    }
+  }
+}

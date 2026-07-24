@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Demo Web AR — Clínica</title>
+
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+
+<style>
+  :root{
+    color-scheme: dark;
+    --bg: #0b0c10;
+    --accent: #17d1a3;
+    --accent-dark: #0fae86;
+    --text: #f4f6f7;
+    --muted: #9aa3a8;
+  }
+  *{ box-sizing: border-box; }
+  html, body{
+    margin:0; padding:0; width:100%; height:100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overflow: hidden;
+  }
+  a-scene{ position:fixed; inset:0; z-index:1; }
+
+  /* ---- Pantalla de arranque (pide cámara / carga) ---- */
+  #boot-screen{
+    position:fixed; inset:0; z-index:50;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; text-align:center; padding:24px;
+    background: radial-gradient(circle at 50% 30%, #14161c 0%, #08090b 100%);
+    transition: opacity .4s ease;
+  }
+  #boot-screen.hidden{ opacity:0; pointer-events:none; }
+  #boot-screen .spinner{
+    width:42px; height:42px; border-radius:50%;
+    border:3px solid rgba(23,209,163,.2); border-top-color: var(--accent);
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+  #boot-screen h1{ font-size:1.05rem; font-weight:600; margin:0; }
+  #boot-screen p{ font-size:.85rem; color:var(--muted); margin:0; max-width:280px; }
+
+  /* ---- Tarjeta HIRO (guía visual mientras no se detecta marcador) ---- */
+  #marker-hint{
+    position:fixed; top:16px; left:50%; transform:translateX(-50%);
+    z-index:20; background:rgba(11,12,16,.72); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.08); border-radius:999px;
+    padding:8px 16px; font-size:.78rem; color:var(--muted);
+    display:flex; align-items:center; gap:8px; transition: opacity .3s ease;
+  }
+  #marker-hint.hidden{ opacity:0; pointer-events:none; }
+  #marker-hint .dot{
+    width:7px; height:7px; border-radius:50%; background: var(--accent);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{ opacity:1;} 50%{ opacity:.3;} }
+
+  /* ---- Control de sonido (overlay DOM, mismo estilo que #marker-hint) ---- */
+  #sound-control{
+    position:fixed; top:16px; right:16px; z-index:20;
+    display:flex; align-items:center; gap:8px;
+  }
+  #sound-toggle{
+    display:flex; align-items:center; gap:6px;
+    background:rgba(11,12,16,.72); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.08); border-radius:999px;
+    padding:8px 14px; font-size:.78rem; color:var(--text); font-weight:600;
+    cursor:pointer; -webkit-tap-highlight-color:transparent;
+    transition: background .15s ease, border-color .15s ease, color .15s ease, transform .12s ease;
+  }
+  #sound-toggle:active{ transform: scale(.96); }
+  #sound-toggle.unmuted{ border-color: var(--accent); color: var(--accent); }
+  #sound-toggle svg{ width:16px; height:16px; }
+  #volume-slider-wrap{
+    display:none; align-items:center;
+    background:rgba(11,12,16,.72); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.08); border-radius:999px;
+    padding:6px 12px;
+  }
+  #volume-slider-wrap.visible{ display:flex; }
+  #volume-slider{
+    width:90px; accent-color: var(--accent);
+  }
+
+  /* ---- Fallback sin AR: video flotante centrado ---- */
+  #fallback{
+    position:fixed; inset:0; z-index:5;
+    display:none; align-items:center; justify-content:center;
+    background: linear-gradient(180deg,#0b0c10 0%,#111318 100%);
+    padding: 90px 20px 140px;
+  }
+  #fallback.active{ display:flex; }
+  #fallback video{
+    width:100%; max-width:420px; border-radius:16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.06);
+  }
+  #fallback .fallback-label{
+    position:absolute; top:20px; left:50%; transform:translateX(-50%);
+    font-size:.75rem; color:var(--muted); text-align:center; padding:0 24px;
+  }
+
+  /* ---- Overlay inferior con botones ---- */
+  #overlay{
+    position:fixed; left:0; right:0; bottom:0; z-index:30;
+    padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(11,12,16,0) 0%, rgba(11,12,16,.85) 30%, rgba(11,12,16,.97) 100%);
+    transition: opacity .25s ease, transform .25s ease;
+  }
+  #overlay.hidden-overlay{
+    opacity:0; pointer-events:none; transform: translateY(8px);
+  }
+  #overlay .brand{
+    text-align:center; font-size:.72rem; letter-spacing:.06em; text-transform:uppercase;
+    color: var(--muted); margin-bottom:10px;
+  }
+  #overlay .actions{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;
+    max-width:520px; margin:0 auto;
+  }
+  .action-btn{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:4px; padding:12px 6px; border-radius:14px; border:1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.05); color:var(--text);
+    font-size:.72rem; font-weight:600; text-decoration:none;
+    cursor:pointer; -webkit-tap-highlight-color:transparent;
+    transition: transform .12s ease, background .12s ease;
+  }
+  .action-btn:active{ transform: scale(.95); background: rgba(255,255,255,.1); }
+  .action-btn svg{ width:20px; height:20px; }
+  .action-btn.whatsapp svg{ stroke:#25d366; }
+  .action-btn.instagram svg{ stroke:#e1306c; }
+  .action-btn.alias svg{ stroke: var(--accent); }
+  .action-btn.alias.copied{ background: rgba(23,209,163,.18); border-color: var(--accent); }
+
+  #toast{
+    position:fixed; left:50%; bottom:112px; transform:translateX(-50%) translateY(10px);
+    z-index:40; background: var(--accent); color:#04211a; font-weight:700; font-size:.8rem;
+    padding:9px 16px; border-radius:999px; opacity:0; pointer-events:none;
+    transition: opacity .25s ease, transform .25s ease;
+    white-space:nowrap;
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     CONFIG — EDITAR ESTOS VALORES ANTES DE PUBLICAR
+     ============================================================ -->
+<script>
+  const CONFIG = {
+    // número de WhatsApp con código de país, solo dígitos
+    WHATSAPP_NUMBER: "543812124512",
+    WHATSAPP_MESSAGE: "Hola! Vi la demo AR y quiero consultar por un tratamiento.",
+
+    // usuario de Instagram (sin @)
+    INSTAGRAM_HANDLE: "as.esteticatucuman",
+
+    // alias bancario real y titular
+    ALIAS_BANCARIO: "raspe.recre.dolarapp",
+    ALIAS_TITULAR: "AS Estética",
+
+    // Webhook de Zapier (Catch Hook → Google Sheets: Create Spreadsheet Row)
+    ZAPIER_WEBHOOK_URL: "https://hooks.zapier.com/hooks/catch/28340642/44folof/",
+
+    // Segundos sin detectar el marcador HIRO antes de pasar al modo sin AR
+    MARKER_TIMEOUT_MS: 6000
+  };
+</script>
+
+<!-- ============================================================
+     PANTALLA DE ARRANQUE
+     ============================================================ -->
+<div id="boot-screen">
+  <div class="spinner"></div>
+  <h1>Preparando tu experiencia AR</h1>
+  <p>Vamos a pedirte permiso de cámara. Apuntá al marcador HIRO para ver la oferta flotando.</p>
+</div>
+
+<div id="marker-hint" class="hidden">
+  <span class="dot"></span>
+  <span>Buscando marcador HIRO…</span>
+</div>
+
+<div id="sound-control">
+  <button id="sound-toggle" type="button" aria-label="Activar sonido">
+    <svg id="sound-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+      <line x1="23" y1="9" x2="17" y2="15"></line>
+      <line x1="17" y1="9" x2="23" y2="15"></line>
+    </svg>
+    <span id="sound-label">Activar sonido</span>
+  </button>
+  <div id="volume-slider-wrap">
+    <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1">
+  </div>
+</div>
+
+<!-- ============================================================
+     ESCENA AR.js — video sobre marcador HIRO
+     ============================================================ -->
+<a-scene
+  id="ar-scene"
+  embedded
+  vr-mode-ui="enabled: false"
+  renderer="logarithmicDepthBuffer: true; precision: medium;"
+  arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+  loading-screen="enabled: false">
+
+  <a-assets>
+    <video
+      id="offer-video"
+      src="demo-clinica.oferta.mp4.mp4"
+      preload="auto"
+      loop
+      muted
+      playsinline
+      webkit-playsinline
+      crossorigin="anonymous"></video>
+  </a-assets>
+
+  <a-marker preset="hiro" id="hiro-marker" emitevents="true">
+    <a-video
+      src="#offer-video"
+      width="1.6"
+      height="0.9"
+      position="0 0.6 0"
+      rotation="0 0 0"
+      look-at="[camera]"
+      material="shader: flat"></a-video>
+
+    <!-- Botones 3D — hijos directos del marcador, visibles solo mientras se trackea -->
+    <a-entity id="btn3d-whatsapp" class="btn3d" position="-0.62 -0.15 0.5" look-at="[camera]">
+      <a-plane class="clickable" width="0.55" height="0.32" color="#25d366" radius="0.04"
+        material="shader: flat; opacity: 0.95"></a-plane>
+      <a-text value="💬 WhatsApp" align="center" color="#04211a" width="1.4"
+        position="0 0 0.01"></a-text>
+    </a-entity>
+
+    <a-entity id="btn3d-alias" class="btn3d" position="0 -0.15 0.5" look-at="[camera]">
+      <a-plane class="clickable" width="0.55" height="0.32" color="#17d1a3" radius="0.04"
+        material="shader: flat; opacity: 0.95"></a-plane>
+      <a-text id="btn3d-alias-text" value="📋 Copiar Alias" align="center" color="#04211a" width="1.3"
+        position="0 0 0.01"></a-text>
+    </a-entity>
+
+    <a-entity id="btn3d-instagram" class="btn3d" position="0.62 -0.15 0.5" look-at="[camera]">
+      <a-plane class="clickable" width="0.55" height="0.32" color="#e1306c" radius="0.04"
+        material="shader: flat; opacity: 0.95"></a-plane>
+      <a-text value="📷 Instagram" align="center" color="#ffffff" width="1.4"
+        position="0 0 0.01"></a-text>
+    </a-entity>
+  </a-marker>
+
+  <a-entity camera
+    raycaster="objects: .clickable; far: 10"
+    cursor="rayOrigin: mouse; fuse: false"></a-entity>
+</a-scene>
+
+<!-- ============================================================
+     FALLBACK — sin cámara / sin marcador detectado
+     ============================================================ -->
+<div id="fallback">
+  <div class="fallback-label">Mostrando la oferta — probá apuntar la cámara al marcador HIRO cuando quieras</div>
+  <video id="fallback-video" src="demo-clinica.oferta.mp4.mp4" autoplay loop muted playsinline webkit-playsinline></video>
+</div>
+
+<!-- ============================================================
+     OVERLAY — botones de acción
+     ============================================================ -->
+<div id="overlay">
+  <div class="brand">Clínica · Oferta exclusiva</div>
+  <div class="actions">
+    <button class="action-btn whatsapp" id="btn-whatsapp" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+      Consultar WhatsApp
+    </button>
+    <button class="action-btn alias" id="btn-alias" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <span id="alias-label">Copiar Alias</span>
+    </button>
+    <button class="action-btn instagram" id="btn-instagram" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+      Instagram
+    </button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  const bootScreen   = document.getElementById("boot-screen");
+  const markerHint    = document.getElementById("marker-hint");
+  const arScene       = document.getElementById("ar-scene");
+  const marker         = document.getElementById("hiro-marker");
+  const fallback       = document.getElementById("fallback");
+  const offerVideo     = document.getElementById("offer-video");
+  const fallbackVideo  = document.getElementById("fallback-video");
+  const toastEl         = document.getElementById("toast");
+  const overlay         = document.getElementById("overlay");
+  const soundToggle     = document.getElementById("sound-toggle");
+  const soundLabel      = document.getElementById("sound-label");
+  const volumeWrap       = document.getElementById("volume-slider-wrap");
+  const volumeSlider     = document.getElementById("volume-slider");
+
+  let markerEverFound = false;
+  let fallbackActive  = false;
+  let audioUnlocked   = false;
+
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    setTimeout(() => toastEl.classList.remove("show"), 2200);
+  }
+
+  function showOverlay(){ overlay.classList.remove("hidden-overlay"); }
+  function hideOverlayDom(){ overlay.classList.add("hidden-overlay"); }
+
+  function activateFallback(){
+    if (fallbackActive) return;
+    fallbackActive = true;
+    arScene.style.display = "none";
+    markerHint.classList.add("hidden");
+    fallback.classList.add("active");
+    showOverlay();
+  }
+
+  // ---- Audio y volumen (controla ambos videos en simultáneo) ----
+  function activeVideos(){
+    return [offerVideo, fallbackVideo];
+  }
+
+  function setMuted(muted){
+    activeVideos().forEach(function(v){ v.muted = muted; });
+    audioUnlocked = !muted;
+    soundToggle.classList.toggle("unmuted", !muted);
+    soundLabel.textContent = muted ? "Activar sonido" : "Silenciar";
+    volumeWrap.classList.toggle("visible", !muted);
+  }
+
+  function setVolume(vol){
+    activeVideos().forEach(function(v){ v.volume = vol; });
+  }
+
+  soundToggle.addEventListener("click", function(){
+    setMuted(audioUnlocked);
+  });
+
+  volumeSlider.addEventListener("input", function(){
+    setVolume(parseFloat(volumeSlider.value));
+  });
+
+  function hideBoot(){
+    bootScreen.classList.add("hidden");
+    setTimeout(() => { bootScreen.style.display = "none"; }, 450);
+  }
+
+  // ---- Ciclo de vida del marcador ----
+  marker.addEventListener("markerFound", function(){
+    markerEverFound = true;
+    markerHint.classList.add("hidden");
+    hideOverlayDom();
+    const p = offerVideo.play();
+    if (p && p.catch) p.catch(function(){});
+  });
+
+  marker.addEventListener("markerLost", function(){
+    offerVideo.pause();
+    if (!fallbackActive) {
+      markerHint.classList.remove("hidden");
+      showOverlay();
+    }
+  });
+
+  // ---- Arranque: cámara lista o no soportada ----
+  function boot(){
+    const supportsCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+    if (!supportsCamera) {
+      hideBoot();
+      activateFallback();
+      return;
+    }
+
+    arScene.addEventListener("arjs-video-loaded", function(){
+      hideBoot();
+      markerHint.classList.remove("hidden");
+      setTimeout(function(){
+        if (!markerEverFound) activateFallback();
+      }, CONFIG.MARKER_TIMEOUT_MS);
+    });
+
+    // Si AR.js/getUserMedia tarda demasiado o falla, no dejar al usuario colgado
+    setTimeout(function(){
+      if (bootScreen.style.display !== "none") {
+        hideBoot();
+        if (!markerEverFound) activateFallback();
+      }
+    }, 8000);
+  }
+
+  document.addEventListener("DOMContentLoaded", boot);
+
+  // ---- CRM: log a Google Sheets vía Zapier Webhook (Columna F = observaciones) ----
+  function logToCRM(botonTocado){
+    if (!CONFIG.ZAPIER_WEBHOOK_URL || CONFIG.ZAPIER_WEBHOOK_URL.indexOf("PEGAR_URL") !== -1) {
+      console.warn("[CRM] ZAPIER_WEBHOOK_URL no configurada, se omite el registro.");
+      return;
+    }
+
+    const ahora = new Date();
+    const payload = {
+      boton_tocado: botonTocado,
+      fecha: ahora.toISOString(),
+      fecha_legible: ahora.toLocaleString("es-AR", { timeZone: "America/Argentina/Tucuman" }),
+      // Estructura real del CRM (Columnas A-F)
+      nombre: "Lead Web AR",
+      tratamiento: "Consulta general (Demo AR)",
+      whatsapp: "",
+      estado_pago: botonTocado === "Copiar Alias" ? "Pendiente de transferencia" : "Sin pago",
+      observaciones: "Web AR Demo — acción: " + botonTocado + " — " + ahora.toLocaleString("es-AR", { timeZone: "America/Argentina/Tucuman" })
+    };
+
+    fetch(CONFIG.ZAPIER_WEBHOOK_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(payload)
+    }).catch(function(err){
+      console.warn("[CRM] No se pudo registrar la acción:", err);
+    });
+  }
+
+  // ---- Botones de acción (reutilizados por el botón DOM y su gemelo 3D) ----
+  function handleWhatsappClick(){
+    logToCRM("Consultar WhatsApp");
+    const url = "https://wa.me/" + CONFIG.WHATSAPP_NUMBER + "?text=" + encodeURIComponent(CONFIG.WHATSAPP_MESSAGE);
+    window.open(url, "_blank");
+  }
+
+  function handleInstagramClick(){
+    logToCRM("Instagram");
+    window.open("https://instagram.com/" + CONFIG.INSTAGRAM_HANDLE, "_blank");
+  }
+
+  function fallbackCopy(text){
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  function handleAliasClick(){
+    logToCRM("Copiar Alias");
+    const aliasBtn    = document.getElementById("btn-alias");
+    const aliasLabel  = document.getElementById("alias-label");
+    const alias3dText = document.getElementById("btn3d-alias-text");
+
+    function onCopied(){
+      aliasBtn.classList.add("copied");
+      aliasLabel.textContent = "¡Copiado!";
+      if (alias3dText) alias3dText.setAttribute("value", "✅ ¡Copiado!");
+      showToast("Alias copiado: " + CONFIG.ALIAS_BANCARIO);
+      setTimeout(function(){
+        aliasBtn.classList.remove("copied");
+        aliasLabel.textContent = "Copiar Alias";
+        if (alias3dText) alias3dText.setAttribute("value", "📋 Copiar Alias");
+      }, 2000);
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(CONFIG.ALIAS_BANCARIO).then(onCopied).catch(function(){
+        fallbackCopy(CONFIG.ALIAS_BANCARIO);
+        onCopied();
+      });
+    } else {
+      fallbackCopy(CONFIG.ALIAS_BANCARIO);
+      onCopied();
+    }
+  }
+
+  document.getElementById("btn-whatsapp").addEventListener("click", handleWhatsappClick);
+  document.getElementById("btn-instagram").addEventListener("click", handleInstagramClick);
+  document.getElementById("btn-alias").addEventListener("click", handleAliasClick);
+
+  document.getElementById("btn3d-whatsapp").addEventListener("click", handleWhatsappClick);
+  document.getElementById("btn3d-instagram").addEventListener("click", handleInstagramClick);
+  document.getElementById("btn3d-alias").addEventListener("click", handleAliasClick);
+
+})();
+</script>
+
+</body>
+</html>
