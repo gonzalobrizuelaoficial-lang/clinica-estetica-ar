@@ -169,7 +169,7 @@
     ZAPIER_WEBHOOK_URL: "https://hooks.zapier.com/hooks/catch/28340642/44folof/",
 
     // Segundos sin detectar el marcador HIRO antes de pasar al modo sin AR
-    MARKER_TIMEOUT_MS: 6000
+    MARKER_TIMEOUT_MS: 5000
   };
 </script>
 
@@ -208,8 +208,8 @@
   id="ar-scene"
   embedded
   vr-mode-ui="enabled: false"
-  renderer="logarithmicDepthBuffer: true; precision: medium;"
-  arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+  renderer="logarithmicDepthBuffer: true; precision: medium; alpha: true;"
+  arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
   loading-screen="enabled: false">
 
   <a-assets>
@@ -398,6 +398,12 @@
       }, CONFIG.MARKER_TIMEOUT_MS);
     });
 
+    // Permiso de cámara denegado o stream no disponible: no esperar el timeout duro
+    arScene.addEventListener("camera-error", function(){
+      hideBoot();
+      activateFallback();
+    });
+
     // Si AR.js/getUserMedia tarda demasiado o falla, no dejar al usuario colgado
     setTimeout(function(){
       if (bootScreen.style.display !== "none") {
@@ -408,6 +414,9 @@
   }
 
   document.addEventListener("DOMContentLoaded", boot);
+  document.addEventListener("DOMContentLoaded", function(){
+    logToCRM("Ingreso a Sala de Espera (Lead 0)");
+  });
 
   // ---- CRM: log a Google Sheets vía Zapier Webhook (Columna F = observaciones) ----
   function logToCRM(botonTocado){
