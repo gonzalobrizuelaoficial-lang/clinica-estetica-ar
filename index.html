@@ -96,6 +96,49 @@
     white-space:nowrap;
   }
   #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ---- Gate de captura de leads (tapa la escena hasta completar el formulario) ---- */
+  #lead-gate{
+    position:fixed; inset:0; z-index:60;
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+    background: radial-gradient(circle at 50% 30%, #14161c 0%, #08090b 100%);
+    transition: opacity .4s ease;
+  }
+  #lead-gate.hidden{ opacity:0; pointer-events:none; }
+  #lead-gate .gate-card{
+    width:100%; max-width:340px; text-align:center;
+    background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+    border-radius:20px; padding:28px 22px; backdrop-filter:blur(6px);
+  }
+  #lead-gate h1{
+    font-size:1.15rem; font-weight:700; margin:0 0 8px; color:var(--text);
+  }
+  #lead-gate p{
+    font-size:.85rem; color:var(--muted); margin:0 0 20px;
+  }
+  #lead-gate label{
+    display:block; text-align:left; font-size:.72rem; color:var(--muted);
+    margin:0 0 6px; text-transform:uppercase; letter-spacing:.05em;
+  }
+  #lead-gate .gate-field{ margin-bottom:14px; }
+  #lead-gate input{
+    width:100%; padding:12px 14px; border-radius:12px;
+    border:1px solid rgba(255,255,255,.12); background:rgba(11,12,16,.6);
+    color:var(--text); font-size:.95rem; font-family:inherit;
+  }
+  #lead-gate input:focus{ outline:none; border-color:var(--accent); }
+  #lead-gate button[type="submit"]{
+    width:100%; margin-top:6px; padding:13px 14px; border:none; border-radius:12px;
+    background: var(--accent); color:#04211a; font-weight:700; font-size:.95rem;
+    cursor:pointer; -webkit-tap-highlight-color:transparent;
+    transition: transform .12s ease, background .15s ease;
+  }
+  #lead-gate button[type="submit"]:active{ transform: scale(.97); background: var(--accent-dark); }
+  #lead-gate .gate-error{
+    font-size:.75rem; color:#ff8a80; margin:-6px 0 14px; text-align:left; display:none;
+  }
+  #lead-gate .gate-error.visible{ display:block; }
 </style>
 </head>
 <body>
@@ -107,7 +150,7 @@
   const CONFIG = {
     // número de WhatsApp con código de país, solo dígitos
     WHATSAPP_NUMBER: "543812124512",
-    WHATSAPP_MESSAGE: "Hola! Vi la demo AR y quiero consultar por un tratamiento.",
+    WHATSAPP_MESSAGE: "Hola! Acabo de activar mi Acceso Exclusivo. Quiero más info sobre la Oportunidad de hoy",
 
     // usuario de Instagram (sin @)
     INSTAGRAM_HANDLE: "as.esteticatucuman",
@@ -122,6 +165,28 @@
     TRATAMIENTO_PROMO: "Consulta general (Demo AR)"
   };
 </script>
+
+<!-- ============================================================
+     GATE DE ACCESO EXCLUSIVO — captura de lead antes de mostrar la escena AR
+     ============================================================ -->
+<div id="lead-gate">
+  <div class="gate-card">
+    <h1>Estás a un paso de una Oportunidad Única.</h1>
+    <p>Ingresá tus datos para obtener Acceso Exclusivo</p>
+    <form id="gate-form" novalidate>
+      <div class="gate-field">
+        <label for="gate-nombre">Nombre</label>
+        <input id="gate-nombre" name="nombre" type="text" autocomplete="name" required>
+      </div>
+      <div class="gate-field">
+        <label for="gate-whatsapp">WhatsApp</label>
+        <input id="gate-whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" required>
+      </div>
+      <div class="gate-error" id="gate-error">Completá tu nombre y WhatsApp para continuar.</div>
+      <button type="submit">Obtener Mi Acceso</button>
+    </form>
+  </div>
+</div>
 
 <!-- ============================================================
      PANTALLA DE ARRANQUE
@@ -189,21 +254,21 @@
       <a-entity id="btn3d-whatsapp" class="btn3d" position="-0.62 -0.15 0.5" look-at="[camera]">
         <a-plane class="clickable" width="0.55" height="0.32" color="#25d366" radius="0.04"
           material="shader: flat; opacity: 0.95"></a-plane>
-        <a-text value="💬 WhatsApp" align="center" color="#04211a" width="1.4"
+        <a-text value="WhatsApp Exclusivo" align="center" color="#04211a" width="1.4"
           position="0 0 0.01"></a-text>
       </a-entity>
 
       <a-entity id="btn3d-cupon" class="btn3d" position="0 -0.15 0.5" look-at="[camera]">
         <a-plane class="clickable" width="0.55" height="0.32" color="#17d1a3" radius="0.04"
           material="shader: flat; opacity: 0.95"></a-plane>
-        <a-text id="btn3d-cupon-text" value="🎟️ Copiar Cupón" align="center" color="#04211a" width="1.3"
+        <a-text id="btn3d-cupon-text" value="Cupón Oportunidad" align="center" color="#04211a" width="1.3"
           position="0 0 0.01"></a-text>
       </a-entity>
 
       <a-entity id="btn3d-instagram" class="btn3d" position="0.62 -0.15 0.5" look-at="[camera]">
         <a-plane class="clickable" width="0.55" height="0.32" color="#e1306c" radius="0.04"
           material="shader: flat; opacity: 0.95"></a-plane>
-        <a-text value="📷 Instagram" align="center" color="#ffffff" width="1.4"
+        <a-text value="Instagram" align="center" color="#ffffff" width="1.4"
           position="0 0 0.01"></a-text>
       </a-entity>
     </a-entity>
@@ -220,6 +285,11 @@
 (function(){
   "use strict";
 
+  const leadGate      = document.getElementById("lead-gate");
+  const gateForm       = document.getElementById("gate-form");
+  const gateNombre      = document.getElementById("gate-nombre");
+  const gateWhatsapp     = document.getElementById("gate-whatsapp");
+  const gateError         = document.getElementById("gate-error");
   const bootScreen   = document.getElementById("boot-screen");
   const markerHint    = document.getElementById("marker-hint");
   const arScene       = document.getElementById("ar-scene");
@@ -302,23 +372,22 @@
     }, 8000);
   }
 
-  document.addEventListener("DOMContentLoaded", boot);
   document.addEventListener("DOMContentLoaded", function(){
     logToCRM("Visita recibida en sala de espera");
   });
 
   // ---- CRM: log a Google Sheets vía Zapier Webhook (4 campos: whatsapp, nombre, tratamiento, estado) ----
-  function logToCRM(tratamiento){
+  function logToCRM(tratamiento, nombre, whatsapp, estado){
     if (!CONFIG.ZAPIER_WEBHOOK_URL || CONFIG.ZAPIER_WEBHOOK_URL.indexOf("PEGAR_URL") !== -1) {
       console.warn("[CRM] ZAPIER_WEBHOOK_URL no configurada, se omite el registro.");
       return;
     }
 
     const payload = {
-      whatsapp: "",
-      nombre: "",
+      whatsapp: whatsapp || "",
+      nombre: nombre || "",
       tratamiento: tratamiento,
-      estado: "En conversación"
+      estado: estado || "En conversación"
     };
 
     fetch(CONFIG.ZAPIER_WEBHOOK_URL, {
@@ -330,6 +399,28 @@
       console.warn("[CRM] No se pudo registrar la acción:", err);
     });
   }
+
+  // ---- Gate de Acceso Exclusivo: captura el lead real y recién ahí arranca la cámara/escena AR ----
+  function hideGate(){
+    leadGate.classList.add("hidden");
+    setTimeout(() => { leadGate.style.display = "none"; }, 450);
+  }
+
+  gateForm.addEventListener("submit", function(e){
+    e.preventDefault();
+    const nombre = gateNombre.value.trim();
+    const whatsapp = gateWhatsapp.value.trim();
+
+    if (!nombre || !whatsapp) {
+      gateError.classList.add("visible");
+      return;
+    }
+    gateError.classList.remove("visible");
+
+    logToCRM("Acceso Exclusivo (Lead Gate)", nombre, whatsapp, "Nuevo Lead");
+    hideGate();
+    boot();
+  });
 
   // ---- Botones de acción (usados por los 3 botones 3D) ----
   function handleWhatsappClick(){
@@ -360,18 +451,18 @@
     const cupon3dText = document.getElementById("btn3d-cupon-text");
 
     function onCopied(){
-      if (cupon3dText) cupon3dText.setAttribute("value", "✅ ¡Copiado!");
+      if (cupon3dText) cupon3dText.setAttribute("value", "¡Copiado!");
       if (window.Swal) {
         Swal.fire({
-          title: "¡Cupón copiado!",
-          html: "Código: <b>" + CONFIG.CUPON_CODE + "</b><br>Vigencia 24hs desde el copiado. Válido para 1 uso.",
+          title: "Cupón Oportunidad Copiado",
+          html: "Código: <b>" + CONFIG.CUPON_CODE + "</b><br>Validez 24 hs. Pegalo en el chat de WhatsApp para validar tu beneficio.",
           icon: "success"
         });
       } else {
         showToast("Cupón copiado: " + CONFIG.CUPON_CODE);
       }
       setTimeout(function(){
-        if (cupon3dText) cupon3dText.setAttribute("value", "🎟️ Copiar Cupón");
+        if (cupon3dText) cupon3dText.setAttribute("value", "Cupón Oportunidad");
       }, 2000);
     }
 
