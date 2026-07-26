@@ -7,6 +7,7 @@
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
   :root{
@@ -87,56 +88,6 @@
     width:90px; accent-color: var(--accent);
   }
 
-  /* ---- Fallback sin AR: video flotante centrado ---- */
-  #fallback{
-    position:fixed; inset:0; z-index:5;
-    display:none; align-items:center; justify-content:center;
-    background: linear-gradient(180deg,#0b0c10 0%,#111318 100%);
-    padding: 90px 20px 140px;
-  }
-  #fallback.active{ display:flex; }
-  #fallback video{
-    width:100%; max-width:420px; border-radius:16px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.06);
-  }
-  #fallback .fallback-label{
-    position:absolute; top:20px; left:50%; transform:translateX(-50%);
-    font-size:.75rem; color:var(--muted); text-align:center; padding:0 24px;
-  }
-
-  /* ---- Overlay inferior con botones ---- */
-  #overlay{
-    position:fixed; left:0; right:0; bottom:0; z-index:30;
-    padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
-    background: linear-gradient(180deg, rgba(11,12,16,0) 0%, rgba(11,12,16,.85) 30%, rgba(11,12,16,.97) 100%);
-    transition: opacity .25s ease, transform .25s ease;
-  }
-  #overlay.hidden-overlay{
-    opacity:0; pointer-events:none; transform: translateY(8px);
-  }
-  #overlay .brand{
-    text-align:center; font-size:.72rem; letter-spacing:.06em; text-transform:uppercase;
-    color: var(--muted); margin-bottom:10px;
-  }
-  #overlay .actions{
-    display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;
-    max-width:520px; margin:0 auto;
-  }
-  .action-btn{
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:4px; padding:12px 6px; border-radius:14px; border:1px solid rgba(255,255,255,.08);
-    background: rgba(255,255,255,.05); color:var(--text);
-    font-size:.72rem; font-weight:600; text-decoration:none;
-    cursor:pointer; -webkit-tap-highlight-color:transparent;
-    transition: transform .12s ease, background .12s ease;
-  }
-  .action-btn:active{ transform: scale(.95); background: rgba(255,255,255,.1); }
-  .action-btn svg{ width:20px; height:20px; }
-  .action-btn.whatsapp svg{ stroke:#25d366; }
-  .action-btn.instagram svg{ stroke:#e1306c; }
-  .action-btn.alias svg{ stroke: var(--accent); }
-  .action-btn.alias.copied{ background: rgba(23,209,163,.18); border-color: var(--accent); }
-
   #toast{
     position:fixed; left:50%; bottom:112px; transform:translateX(-50%) translateY(10px);
     z-index:40; background: var(--accent); color:#04211a; font-weight:700; font-size:.8rem;
@@ -161,15 +112,14 @@
     // usuario de Instagram (sin @)
     INSTAGRAM_HANDLE: "as.esteticatucuman",
 
-    // alias bancario real y titular
-    ALIAS_BANCARIO: "raspe.recre.dolarapp",
-    ALIAS_TITULAR: "AS Estética",
+    // código de cupón que se copia al portapapeles
+    CUPON_CODE: "PROMO001",
 
     // Webhook de Zapier (Catch Hook → Google Sheets: Create Spreadsheet Row)
     ZAPIER_WEBHOOK_URL: "https://hooks.zapier.com/hooks/catch/28340642/44folof/",
 
-    // Segundos sin detectar el marcador HIRO antes de pasar al modo sin AR
-    MARKER_TIMEOUT_MS: 5000
+    // Nombre de la promo/tratamiento que se registra en el CRM al interactuar
+    TRATAMIENTO_PROMO: "Consulta general (Demo AR)"
   };
 </script>
 
@@ -225,35 +175,37 @@
   </a-assets>
 
   <a-marker preset="hiro" id="hiro-marker" emitevents="true">
-    <a-video
-      src="#offer-video"
-      width="1.6"
-      height="0.9"
-      position="0 0.6 0"
-      rotation="0 0 0"
-      look-at="[camera]"
-      material="shader: flat"></a-video>
+    <a-entity id="ar-content" scale="0.5 0.5 0.5">
+      <a-video
+        src="#offer-video"
+        width="1.6"
+        height="0.9"
+        position="0 0.6 0"
+        rotation="0 0 0"
+        look-at="[camera]"
+        material="shader: flat"></a-video>
 
-    <!-- Botones 3D — hijos directos del marcador, visibles solo mientras se trackea -->
-    <a-entity id="btn3d-whatsapp" class="btn3d" position="-0.62 -0.15 0.5" look-at="[camera]">
-      <a-plane class="clickable" width="0.55" height="0.32" color="#25d366" radius="0.04"
-        material="shader: flat; opacity: 0.95"></a-plane>
-      <a-text value="💬 WhatsApp" align="center" color="#04211a" width="1.4"
-        position="0 0 0.01"></a-text>
-    </a-entity>
+      <!-- Botones 3D — hijos directos del marcador, visibles solo mientras se trackea -->
+      <a-entity id="btn3d-whatsapp" class="btn3d" position="-0.62 -0.15 0.5" look-at="[camera]">
+        <a-plane class="clickable" width="0.55" height="0.32" color="#25d366" radius="0.04"
+          material="shader: flat; opacity: 0.95"></a-plane>
+        <a-text value="💬 WhatsApp" align="center" color="#04211a" width="1.4"
+          position="0 0 0.01"></a-text>
+      </a-entity>
 
-    <a-entity id="btn3d-alias" class="btn3d" position="0 -0.15 0.5" look-at="[camera]">
-      <a-plane class="clickable" width="0.55" height="0.32" color="#17d1a3" radius="0.04"
-        material="shader: flat; opacity: 0.95"></a-plane>
-      <a-text id="btn3d-alias-text" value="📋 Copiar Alias" align="center" color="#04211a" width="1.3"
-        position="0 0 0.01"></a-text>
-    </a-entity>
+      <a-entity id="btn3d-cupon" class="btn3d" position="0 -0.15 0.5" look-at="[camera]">
+        <a-plane class="clickable" width="0.55" height="0.32" color="#17d1a3" radius="0.04"
+          material="shader: flat; opacity: 0.95"></a-plane>
+        <a-text id="btn3d-cupon-text" value="🎟️ Copiar Cupón" align="center" color="#04211a" width="1.3"
+          position="0 0 0.01"></a-text>
+      </a-entity>
 
-    <a-entity id="btn3d-instagram" class="btn3d" position="0.62 -0.15 0.5" look-at="[camera]">
-      <a-plane class="clickable" width="0.55" height="0.32" color="#e1306c" radius="0.04"
-        material="shader: flat; opacity: 0.95"></a-plane>
-      <a-text value="📷 Instagram" align="center" color="#ffffff" width="1.4"
-        position="0 0 0.01"></a-text>
+      <a-entity id="btn3d-instagram" class="btn3d" position="0.62 -0.15 0.5" look-at="[camera]">
+        <a-plane class="clickable" width="0.55" height="0.32" color="#e1306c" radius="0.04"
+          material="shader: flat; opacity: 0.95"></a-plane>
+        <a-text value="📷 Instagram" align="center" color="#ffffff" width="1.4"
+          position="0 0 0.01"></a-text>
+      </a-entity>
     </a-entity>
   </a-marker>
 
@@ -261,35 +213,6 @@
     raycaster="objects: .clickable; far: 10"
     cursor="rayOrigin: mouse; fuse: false"></a-entity>
 </a-scene>
-
-<!-- ============================================================
-     FALLBACK — sin cámara / sin marcador detectado
-     ============================================================ -->
-<div id="fallback">
-  <div class="fallback-label">Mostrando la oferta — probá apuntar la cámara al marcador HIRO cuando quieras</div>
-  <video id="fallback-video" src="demo-clinica.oferta.mp4.mp4" autoplay loop muted playsinline webkit-playsinline></video>
-</div>
-
-<!-- ============================================================
-     OVERLAY — botones de acción
-     ============================================================ -->
-<div id="overlay">
-  <div class="brand">Clínica · Oferta exclusiva</div>
-  <div class="actions">
-    <button class="action-btn whatsapp" id="btn-whatsapp" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-      Consultar WhatsApp
-    </button>
-    <button class="action-btn alias" id="btn-alias" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-      <span id="alias-label">Copiar Alias</span>
-    </button>
-    <button class="action-btn instagram" id="btn-instagram" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-      Instagram
-    </button>
-  </div>
-</div>
 
 <div id="toast"></div>
 
@@ -301,18 +224,13 @@
   const markerHint    = document.getElementById("marker-hint");
   const arScene       = document.getElementById("ar-scene");
   const marker         = document.getElementById("hiro-marker");
-  const fallback       = document.getElementById("fallback");
   const offerVideo     = document.getElementById("offer-video");
-  const fallbackVideo  = document.getElementById("fallback-video");
   const toastEl         = document.getElementById("toast");
-  const overlay         = document.getElementById("overlay");
   const soundToggle     = document.getElementById("sound-toggle");
   const soundLabel      = document.getElementById("sound-label");
   const volumeWrap       = document.getElementById("volume-slider-wrap");
   const volumeSlider     = document.getElementById("volume-slider");
 
-  let markerEverFound = false;
-  let fallbackActive  = false;
   let audioUnlocked   = false;
 
   function showToast(msg){
@@ -321,25 +239,9 @@
     setTimeout(() => toastEl.classList.remove("show"), 2200);
   }
 
-  function showOverlay(){ overlay.classList.remove("hidden-overlay"); }
-  function hideOverlayDom(){ overlay.classList.add("hidden-overlay"); }
-
-  function activateFallback(){
-    if (fallbackActive) return;
-    fallbackActive = true;
-    arScene.style.display = "none";
-    markerHint.classList.add("hidden");
-    fallback.classList.add("active");
-    showOverlay();
-  }
-
-  // ---- Audio y volumen (controla ambos videos en simultáneo) ----
-  function activeVideos(){
-    return [offerVideo, fallbackVideo];
-  }
-
+  // ---- Audio y volumen ----
   function setMuted(muted){
-    activeVideos().forEach(function(v){ v.muted = muted; });
+    offerVideo.muted = muted;
     audioUnlocked = !muted;
     soundToggle.classList.toggle("unmuted", !muted);
     soundLabel.textContent = muted ? "Activar sonido" : "Silenciar";
@@ -347,7 +249,7 @@
   }
 
   function setVolume(vol){
-    activeVideos().forEach(function(v){ v.volume = vol; });
+    offerVideo.volume = vol;
   }
 
   soundToggle.addEventListener("click", function(){
@@ -365,77 +267,58 @@
 
   // ---- Ciclo de vida del marcador ----
   marker.addEventListener("markerFound", function(){
-    markerEverFound = true;
     markerHint.classList.add("hidden");
-    hideOverlayDom();
     const p = offerVideo.play();
     if (p && p.catch) p.catch(function(){});
   });
 
   marker.addEventListener("markerLost", function(){
     offerVideo.pause();
-    if (!fallbackActive) {
-      markerHint.classList.remove("hidden");
-      showOverlay();
-    }
+    markerHint.classList.remove("hidden");
   });
 
   // ---- Arranque: cámara lista o no soportada ----
+  // Sin video de respaldo: en cualquier escenario, la app termina esperando
+  // indefinidamente el marcador HIRO en #marker-hint.
   function boot(){
     const supportsCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
-    if (!supportsCamera) {
+    function goToWaiting(){
       hideBoot();
-      activateFallback();
+      markerHint.classList.remove("hidden");
+    }
+
+    if (!supportsCamera) {
+      goToWaiting();
       return;
     }
 
-    arScene.addEventListener("arjs-video-loaded", function(){
-      hideBoot();
-      markerHint.classList.remove("hidden");
-      setTimeout(function(){
-        if (!markerEverFound) activateFallback();
-      }, CONFIG.MARKER_TIMEOUT_MS);
-    });
+    arScene.addEventListener("arjs-video-loaded", goToWaiting);
+    arScene.addEventListener("camera-error", goToWaiting);
 
-    // Permiso de cámara denegado o stream no disponible: no esperar el timeout duro
-    arScene.addEventListener("camera-error", function(){
-      hideBoot();
-      activateFallback();
-    });
-
-    // Si AR.js/getUserMedia tarda demasiado o falla, no dejar al usuario colgado
+    // Failsafe: si arjs-video-loaded nunca dispara, no dejar la pantalla de carga trabada
     setTimeout(function(){
-      if (bootScreen.style.display !== "none") {
-        hideBoot();
-        if (!markerEverFound) activateFallback();
-      }
+      if (bootScreen.style.display !== "none") goToWaiting();
     }, 8000);
   }
 
   document.addEventListener("DOMContentLoaded", boot);
   document.addEventListener("DOMContentLoaded", function(){
-    logToCRM("Ingreso a Sala de Espera (Lead 0)");
+    logToCRM("Visita recibida en sala de espera");
   });
 
-  // ---- CRM: log a Google Sheets vía Zapier Webhook (Columna F = observaciones) ----
-  function logToCRM(botonTocado){
+  // ---- CRM: log a Google Sheets vía Zapier Webhook (4 campos: whatsapp, nombre, tratamiento, estado) ----
+  function logToCRM(tratamiento){
     if (!CONFIG.ZAPIER_WEBHOOK_URL || CONFIG.ZAPIER_WEBHOOK_URL.indexOf("PEGAR_URL") !== -1) {
       console.warn("[CRM] ZAPIER_WEBHOOK_URL no configurada, se omite el registro.");
       return;
     }
 
-    const ahora = new Date();
     const payload = {
-      boton_tocado: botonTocado,
-      fecha: ahora.toISOString(),
-      fecha_legible: ahora.toLocaleString("es-AR", { timeZone: "America/Argentina/Tucuman" }),
-      // Estructura real del CRM (Columnas A-F)
-      nombre: "Lead Web AR",
-      tratamiento: "Consulta general (Demo AR)",
       whatsapp: "",
-      estado_pago: botonTocado === "Copiar Alias" ? "Pendiente de transferencia" : "Sin pago",
-      observaciones: "Web AR Demo — acción: " + botonTocado + " — " + ahora.toLocaleString("es-AR", { timeZone: "America/Argentina/Tucuman" })
+      nombre: "",
+      tratamiento: tratamiento,
+      estado: "En conversación"
     };
 
     fetch(CONFIG.ZAPIER_WEBHOOK_URL, {
@@ -448,15 +331,15 @@
     });
   }
 
-  // ---- Botones de acción (reutilizados por el botón DOM y su gemelo 3D) ----
+  // ---- Botones de acción (usados por los 3 botones 3D) ----
   function handleWhatsappClick(){
-    logToCRM("Consultar WhatsApp");
+    logToCRM(CONFIG.TRATAMIENTO_PROMO);
     const url = "https://wa.me/" + CONFIG.WHATSAPP_NUMBER + "?text=" + encodeURIComponent(CONFIG.WHATSAPP_MESSAGE);
     window.open(url, "_blank");
   }
 
   function handleInstagramClick(){
-    logToCRM("Instagram");
+    logToCRM(CONFIG.TRATAMIENTO_PROMO);
     window.open("https://instagram.com/" + CONFIG.INSTAGRAM_HANDLE, "_blank");
   }
 
@@ -472,42 +355,40 @@
     document.body.removeChild(ta);
   }
 
-  function handleAliasClick(){
-    logToCRM("Copiar Alias");
-    const aliasBtn    = document.getElementById("btn-alias");
-    const aliasLabel  = document.getElementById("alias-label");
-    const alias3dText = document.getElementById("btn3d-alias-text");
+  function handleCuponClick(){
+    logToCRM(CONFIG.TRATAMIENTO_PROMO);
+    const cupon3dText = document.getElementById("btn3d-cupon-text");
 
     function onCopied(){
-      aliasBtn.classList.add("copied");
-      aliasLabel.textContent = "¡Copiado!";
-      if (alias3dText) alias3dText.setAttribute("value", "✅ ¡Copiado!");
-      showToast("Alias copiado: " + CONFIG.ALIAS_BANCARIO);
+      if (cupon3dText) cupon3dText.setAttribute("value", "✅ ¡Copiado!");
+      if (window.Swal) {
+        Swal.fire({
+          title: "¡Cupón copiado!",
+          html: "Código: <b>" + CONFIG.CUPON_CODE + "</b><br>Vigencia 24hs desde el copiado. Válido para 1 uso.",
+          icon: "success"
+        });
+      } else {
+        showToast("Cupón copiado: " + CONFIG.CUPON_CODE);
+      }
       setTimeout(function(){
-        aliasBtn.classList.remove("copied");
-        aliasLabel.textContent = "Copiar Alias";
-        if (alias3dText) alias3dText.setAttribute("value", "📋 Copiar Alias");
+        if (cupon3dText) cupon3dText.setAttribute("value", "🎟️ Copiar Cupón");
       }, 2000);
     }
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(CONFIG.ALIAS_BANCARIO).then(onCopied).catch(function(){
-        fallbackCopy(CONFIG.ALIAS_BANCARIO);
+      navigator.clipboard.writeText(CONFIG.CUPON_CODE).then(onCopied).catch(function(){
+        fallbackCopy(CONFIG.CUPON_CODE);
         onCopied();
       });
     } else {
-      fallbackCopy(CONFIG.ALIAS_BANCARIO);
+      fallbackCopy(CONFIG.CUPON_CODE);
       onCopied();
     }
   }
 
-  document.getElementById("btn-whatsapp").addEventListener("click", handleWhatsappClick);
-  document.getElementById("btn-instagram").addEventListener("click", handleInstagramClick);
-  document.getElementById("btn-alias").addEventListener("click", handleAliasClick);
-
   document.getElementById("btn3d-whatsapp").addEventListener("click", handleWhatsappClick);
   document.getElementById("btn3d-instagram").addEventListener("click", handleInstagramClick);
-  document.getElementById("btn3d-alias").addEventListener("click", handleAliasClick);
+  document.getElementById("btn3d-cupon").addEventListener("click", handleCuponClick);
 
 })();
 </script>
