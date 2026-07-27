@@ -50,7 +50,10 @@
   #sound-control{
     position:fixed; top:16px; right:16px; z-index:20;
     display:flex; align-items:center; gap:8px;
+    opacity:0; pointer-events:none;
+    transition: opacity .3s ease;
   }
+  #sound-control.visible{ opacity:1; pointer-events:auto; }
   #sound-toggle{
     display:flex; align-items:center; gap:6px;
     background:rgba(11,12,16,.72); backdrop-filter:blur(6px);
@@ -101,6 +104,9 @@
   }
   #lead-gate p{
     font-size:.85rem; color:var(--muted); margin:0 0 20px;
+  }
+  #lead-gate .gate-status{
+    font-size:.75rem; color:var(--accent); margin:-10px 0 16px; font-weight:600;
   }
   #lead-gate label{
     display:block; text-align:left; font-size:.72rem; color:var(--muted);
@@ -159,6 +165,7 @@
     <h1>Estás a un paso de una Oportunidad Única.</h1>
     <p>Ingresá tus datos para obtener Acceso Exclusivo</p>
     <form id="gate-form" novalidate>
+      <p class="gate-status">Preparando tratamiento inmersivo...</p>
       <div class="gate-field">
         <label for="gate-nombre">Nombre</label>
         <input id="gate-nombre" name="nombre" type="text" autocomplete="name" required>
@@ -197,12 +204,14 @@
 </div>
 
 <!-- ============================================================
-     ESCENA AR.js — HUD fijo anclado a la cámara (video + botones)
+     ESCENA AR.js — marcador HIRO real (video + botones anclados al marcador)
      ============================================================ -->
 <a-scene
   id="ar-scene"
   embedded
   vr-mode-ui="enabled: false"
+  ar-mode-ui="enabled: false"
+  device-orientation-permission-ui="enabled: false"
   renderer="precision: medium; antialias: false; logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true; powerPreference: high-performance; alpha: true;"
   loading-screen="enabled: false">
 
@@ -218,41 +227,41 @@
       crossorigin="anonymous"></video>
   </a-assets>
 
-  <a-entity camera
-    raycaster="objects: .clickable; far: 10"
-    cursor="rayOrigin: mouse; fuse: false">
+  <!-- Marcador HIRO real: video y botones vuelven a anclarse a él, con smoothing
+       agresivo para eliminar el temblor de pose que antes motivó pasar a HUD fijo. -->
+  <a-marker preset="hiro" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
+    <a-video
+      src="#offer-video"
+      width="1"
+      height="1.77"
+      position="0 1.0 0"
+      material="shader: flat"></a-video>
 
-    <!-- HUD fijo: hijo directo de la cámara, a distancia constante. No depende del
-         marcador HIRO ni de su tracking, así que no hereda su jitter de pose. -->
-    <a-entity id="hud-content" position="0 0 -1.3">
-      <a-video
-        src="#offer-video"
-        width="0.6"
-        height="1.0667"
-        position="0 0.35 0"
-        material="shader: flat"></a-video>
-
-      <a-entity id="btn3d-whatsapp" class="btn3d" position="0 -0.35 0">
-        <a-plane class="clickable" width="0.58" height="0.16" color="#25d366" radius="0.04"
-          material="shader: flat; opacity: 0.95"></a-plane>
-        <a-text value="WhatsApp Exclusivo" align="center" color="#04211a" width="1.1"
-          position="0 0 0.01"></a-text>
-      </a-entity>
-
-      <a-entity id="btn3d-cupon" class="btn3d" position="0 -0.55 0">
-        <a-plane class="clickable" width="0.58" height="0.16" color="#17d1a3" radius="0.04"
-          material="shader: flat; opacity: 0.95"></a-plane>
-        <a-text id="btn3d-cupon-text" value="Cupón Oportunidad" align="center" color="#04211a" width="1.05"
-          position="0 0 0.01"></a-text>
-      </a-entity>
-
-      <a-entity id="btn3d-instagram" class="btn3d" position="0 -0.75 0">
-        <a-plane class="clickable" width="0.58" height="0.16" color="#e1306c" radius="0.04"
-          material="shader: flat; opacity: 0.95"></a-plane>
-        <a-text value="Instagram" align="center" color="#ffffff" width="1.1"
-          position="0 0 0.01"></a-text>
-      </a-entity>
+    <a-entity id="btn3d-whatsapp" class="btn3d" position="-0.6 -0.3 0">
+      <a-plane class="raycastable" width="0.58" height="0.16" color="#25d366" radius="0.04"
+        material="shader: flat; opacity: 0.95"></a-plane>
+      <a-text value="WhatsApp Exclusivo" align="center" color="#04211a" width="1.1"
+        position="0 0 0.01"></a-text>
     </a-entity>
+
+    <a-entity id="btn3d-cupon" class="btn3d" position="0 -0.3 0">
+      <a-plane class="raycastable" width="0.58" height="0.16" color="#17d1a3" radius="0.04"
+        material="shader: flat; opacity: 0.95"></a-plane>
+      <a-text id="btn3d-cupon-text" value="Cupón Oportunidad" align="center" color="#04211a" width="1.05"
+        position="0 0 0.01"></a-text>
+    </a-entity>
+
+    <a-entity id="btn3d-instagram" class="btn3d" position="0.6 -0.3 0">
+      <a-plane class="raycastable" width="0.58" height="0.16" color="#e1306c" radius="0.04"
+        material="shader: flat; opacity: 0.95"></a-plane>
+      <a-text value="Instagram" align="center" color="#ffffff" width="1.1"
+        position="0 0 0.01"></a-text>
+    </a-entity>
+  </a-marker>
+
+  <a-entity camera
+    raycaster="objects: .raycastable; far: 10"
+    cursor="rayOrigin: mouse; fuse: false">
   </a-entity>
 </a-scene>
 
@@ -271,6 +280,7 @@
   const arScene       = document.getElementById("ar-scene");
   const offerVideo     = document.getElementById("offer-video");
   const toastEl         = document.getElementById("toast");
+  const soundControl    = document.getElementById("sound-control");
   const soundToggle     = document.getElementById("sound-toggle");
   const soundLabel      = document.getElementById("sound-label");
   const volumeWrap       = document.getElementById("volume-slider-wrap");
@@ -313,7 +323,8 @@
     setTimeout(() => { bootScreen.style.display = "none"; }, 450);
   }
 
-  // ---- Revelado del HUD: ya no depende del marcador HIRO, se dispara apenas la cámara está lista ----
+  // ---- Revelado: la cámara ya está lista; el video/botones recién aparecen cuando
+  // el marcador HIRO se detecte (ver markerFound más abajo) ----
   function revealContent(){
     hideBoot();
 
@@ -340,6 +351,15 @@
     // (ver three.js/src/threex/arjs-source.js) — escuchar en arScene nunca los recibía.
     window.addEventListener("arjs-video-loaded", revealContent);
     window.addEventListener("camera-error", revealContent);
+
+    // El botón de sonido recién se muestra la primera vez que el marcador HIRO
+    // se detecta, para no invitar a tocarlo antes de que haya algo en pantalla.
+    const marker = arScene.querySelector("a-marker");
+    if (marker) {
+      marker.addEventListener("markerFound", function(){
+        soundControl.classList.add("visible");
+      }, { once: true });
+    }
 
     // El atributo arjs recién se setea acá (no en el HTML estático) para que
     // getUserMedia se pida justo después del Lead Gate, no al parsear la página.
