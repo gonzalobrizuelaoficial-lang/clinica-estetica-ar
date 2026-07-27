@@ -21,11 +21,15 @@
   *{ box-sizing: border-box; }
   html, body{
     margin:0; padding:0; width:100%; height:100%;
-    background: var(--bg);
+    background: transparent;
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     overflow: hidden;
   }
+  /* El fondo oscuro NO va en html/body: un background sólido ahí pinta por
+     encima de cualquier hijo con z-index negativo (el <video> de cámara que
+     inyecta AR.js), tapando la cámara por completo. Cada pantalla que
+     necesita fondo opaco (#boot-screen, #lead-gate) ya lo define ella misma. */
   a-scene{ position:fixed; inset:0; z-index:1; }
 
   /* ---- Pantalla de arranque (pide cámara / carga) ---- */
