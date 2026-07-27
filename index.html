@@ -46,22 +46,7 @@
   #boot-screen h1{ font-size:1.05rem; font-weight:600; margin:0; }
   #boot-screen p{ font-size:.85rem; color:var(--muted); margin:0; max-width:280px; }
 
-  /* ---- Tarjeta HIRO (guía visual mientras no se detecta marcador) ---- */
-  #marker-hint{
-    position:fixed; top:16px; left:50%; transform:translateX(-50%);
-    z-index:20; background:rgba(11,12,16,.72); backdrop-filter:blur(6px);
-    border:1px solid rgba(255,255,255,.08); border-radius:999px;
-    padding:8px 16px; font-size:.78rem; color:var(--muted);
-    display:flex; align-items:center; gap:8px; transition: opacity .3s ease;
-  }
-  #marker-hint.hidden{ opacity:0; pointer-events:none; }
-  #marker-hint .dot{
-    width:7px; height:7px; border-radius:50%; background: var(--accent);
-    animation: pulse 1.4s ease-in-out infinite;
-  }
-  @keyframes pulse{ 0%,100%{ opacity:1;} 50%{ opacity:.3;} }
-
-  /* ---- Control de sonido (overlay DOM, mismo estilo que #marker-hint) ---- */
+  /* ---- Control de sonido (overlay DOM) ---- */
   #sound-control{
     position:fixed; top:16px; right:16px; z-index:20;
     display:flex; align-items:center; gap:8px;
@@ -194,12 +179,7 @@
 <div id="boot-screen">
   <div class="spinner"></div>
   <h1>Preparando tu experiencia AR</h1>
-  <p>Vamos a pedirte permiso de cámara. Apuntá al marcador HIRO para ver la oferta flotando.</p>
-</div>
-
-<div id="marker-hint" class="hidden">
-  <span class="dot"></span>
-  <span>Buscando marcador HIRO…</span>
+  <p>Vamos a pedirte permiso de cámara para mostrarte la oferta.</p>
 </div>
 
 <div id="sound-control">
@@ -217,14 +197,13 @@
 </div>
 
 <!-- ============================================================
-     ESCENA AR.js — video sobre marcador HIRO
+     ESCENA AR.js — HUD fijo anclado a la cámara (video + botones)
      ============================================================ -->
 <a-scene
   id="ar-scene"
   embedded
   vr-mode-ui="enabled: false"
   renderer="precision: medium; antialias: false; logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true; powerPreference: high-performance; alpha: true;"
-  arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; sourceWidth: 640; sourceHeight: 480; displayWidth: 640; displayHeight: 480;"
   loading-screen="enabled: false">
 
   <a-assets>
@@ -239,45 +218,42 @@
       crossorigin="anonymous"></video>
   </a-assets>
 
-  <a-marker preset="hiro" id="hiro-marker" emitevents="true"
-    smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
-    <a-entity id="ar-content" scale="0.5 0.5 0.5">
+  <a-entity camera
+    raycaster="objects: .clickable; far: 10"
+    cursor="rayOrigin: mouse; fuse: false">
+
+    <!-- HUD fijo: hijo directo de la cámara, a distancia constante. No depende del
+         marcador HIRO ni de su tracking, así que no hereda su jitter de pose. -->
+    <a-entity id="hud-content" position="0 0 -1.3">
       <a-video
         src="#offer-video"
-        width="1.6"
-        height="0.9"
-        position="0 0.6 0"
-        rotation="0 0 0"
-        look-at="[camera]"
+        width="0.6"
+        height="1.0667"
+        position="0 0.35 0"
         material="shader: flat"></a-video>
 
-      <!-- Botones 3D — hijos directos del marcador, visibles solo mientras se trackea -->
-      <a-entity id="btn3d-whatsapp" class="btn3d" position="-0.62 -0.15 0.5" look-at="[camera]">
-        <a-plane class="clickable" width="0.55" height="0.32" color="#25d366" radius="0.04"
+      <a-entity id="btn3d-whatsapp" class="btn3d" position="0 -0.35 0">
+        <a-plane class="clickable" width="0.58" height="0.16" color="#25d366" radius="0.04"
           material="shader: flat; opacity: 0.95"></a-plane>
-        <a-text value="WhatsApp Exclusivo" align="center" color="#04211a" width="1.4"
+        <a-text value="WhatsApp Exclusivo" align="center" color="#04211a" width="1.1"
           position="0 0 0.01"></a-text>
       </a-entity>
 
-      <a-entity id="btn3d-cupon" class="btn3d" position="0 -0.15 0.5" look-at="[camera]">
-        <a-plane class="clickable" width="0.55" height="0.32" color="#17d1a3" radius="0.04"
+      <a-entity id="btn3d-cupon" class="btn3d" position="0 -0.55 0">
+        <a-plane class="clickable" width="0.58" height="0.16" color="#17d1a3" radius="0.04"
           material="shader: flat; opacity: 0.95"></a-plane>
-        <a-text id="btn3d-cupon-text" value="Cupón Oportunidad" align="center" color="#04211a" width="1.3"
+        <a-text id="btn3d-cupon-text" value="Cupón Oportunidad" align="center" color="#04211a" width="1.05"
           position="0 0 0.01"></a-text>
       </a-entity>
 
-      <a-entity id="btn3d-instagram" class="btn3d" position="0.62 -0.15 0.5" look-at="[camera]">
-        <a-plane class="clickable" width="0.55" height="0.32" color="#e1306c" radius="0.04"
+      <a-entity id="btn3d-instagram" class="btn3d" position="0 -0.75 0">
+        <a-plane class="clickable" width="0.58" height="0.16" color="#e1306c" radius="0.04"
           material="shader: flat; opacity: 0.95"></a-plane>
-        <a-text value="Instagram" align="center" color="#ffffff" width="1.4"
+        <a-text value="Instagram" align="center" color="#ffffff" width="1.1"
           position="0 0 0.01"></a-text>
       </a-entity>
     </a-entity>
-  </a-marker>
-
-  <a-entity camera
-    raycaster="objects: .clickable; far: 10"
-    cursor="rayOrigin: mouse; fuse: false"></a-entity>
+  </a-entity>
 </a-scene>
 
 <div id="toast"></div>
@@ -292,9 +268,7 @@
   const gateWhatsapp     = document.getElementById("gate-whatsapp");
   const gateError         = document.getElementById("gate-error");
   const bootScreen   = document.getElementById("boot-screen");
-  const markerHint    = document.getElementById("marker-hint");
   const arScene       = document.getElementById("ar-scene");
-  const marker         = document.getElementById("hiro-marker");
   const offerVideo     = document.getElementById("offer-video");
   const toastEl         = document.getElementById("toast");
   const soundToggle     = document.getElementById("sound-toggle");
@@ -304,6 +278,8 @@
 
   let audioUnlocked   = false;
   let videoSourceLoaded = false;
+  let leadNombre = "";
+  let leadWhatsapp = "";
 
   function showToast(msg){
     toastEl.textContent = msg;
@@ -337,9 +313,9 @@
     setTimeout(() => { bootScreen.style.display = "none"; }, 450);
   }
 
-  // ---- Ciclo de vida del marcador ----
-  marker.addEventListener("markerFound", function(){
-    markerHint.classList.add("hidden");
+  // ---- Revelado del HUD: ya no depende del marcador HIRO, se dispara apenas la cámara está lista ----
+  function revealContent(){
+    hideBoot();
 
     if (!videoSourceLoaded) {
       videoSourceLoaded = true;
@@ -349,35 +325,31 @@
 
     const p = offerVideo.play();
     if (p && p.catch) p.catch(function(){});
-  });
-
-  marker.addEventListener("markerLost", function(){
-    offerVideo.pause();
-    markerHint.classList.remove("hidden");
-  });
+  }
 
   // ---- Arranque: cámara lista o no soportada ----
-  // Sin video de respaldo: en cualquier escenario, la app termina esperando
-  // indefinidamente el marcador HIRO en #marker-hint.
   function boot(){
     const supportsCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
-    function goToWaiting(){
-      hideBoot();
-      markerHint.classList.remove("hidden");
-    }
-
     if (!supportsCamera) {
-      goToWaiting();
+      revealContent();
       return;
     }
 
-    arScene.addEventListener("arjs-video-loaded", goToWaiting);
-    arScene.addEventListener("camera-error", goToWaiting);
+    // AR.js dispara arjs-video-loaded/camera-error en `window`, no en <a-scene>
+    // (ver three.js/src/threex/arjs-source.js) — escuchar en arScene nunca los recibía.
+    window.addEventListener("arjs-video-loaded", revealContent);
+    window.addEventListener("camera-error", revealContent);
+
+    // El atributo arjs recién se setea acá (no en el HTML estático) para que
+    // getUserMedia se pida justo después del Lead Gate, no al parsear la página.
+    arScene.setAttribute("arjs",
+      "sourceType: webcam; debugUIEnabled: false; detectionMode: mono; " +
+      "sourceWidth: 640; sourceHeight: 480; displayWidth: 640; displayHeight: 480;");
 
     // Failsafe: si arjs-video-loaded nunca dispara, no dejar la pantalla de carga trabada
     setTimeout(function(){
-      if (bootScreen.style.display !== "none") goToWaiting();
+      if (bootScreen.style.display !== "none") revealContent();
     }, 8000);
   }
 
@@ -425,20 +397,23 @@
     }
     gateError.classList.remove("visible");
 
+    leadNombre = nombre;
+    leadWhatsapp = whatsapp;
+
     logToCRM("Acceso Exclusivo (Lead Gate)", nombre, whatsapp, "Nuevo Lead");
     hideGate();
-    boot();
+    setTimeout(boot, 500);
   });
 
   // ---- Botones de acción (usados por los 3 botones 3D) ----
   function handleWhatsappClick(){
-    logToCRM(CONFIG.TRATAMIENTO_PROMO);
+    logToCRM("WhatsApp Exclusivo", leadNombre, leadWhatsapp, "Click botón WhatsApp");
     const url = "https://wa.me/" + CONFIG.WHATSAPP_NUMBER + "?text=" + encodeURIComponent(CONFIG.WHATSAPP_MESSAGE);
     window.open(url, "_blank");
   }
 
   function handleInstagramClick(){
-    logToCRM(CONFIG.TRATAMIENTO_PROMO);
+    logToCRM("Instagram", leadNombre, leadWhatsapp, "Click botón Instagram");
     window.open("https://instagram.com/" + CONFIG.INSTAGRAM_HANDLE, "_blank");
   }
 
@@ -455,7 +430,7 @@
   }
 
   function handleCuponClick(){
-    logToCRM(CONFIG.TRATAMIENTO_PROMO);
+    logToCRM("Cupón Oportunidad", leadNombre, leadWhatsapp, "Click botón Cupón");
     const cupon3dText = document.getElementById("btn3d-cupon-text");
 
     function onCopied(){
