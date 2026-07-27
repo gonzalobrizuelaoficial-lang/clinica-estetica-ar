@@ -224,14 +224,14 @@
   embedded
   vr-mode-ui="enabled: false"
   renderer="logarithmicDepthBuffer: true; precision: medium; alpha: true;"
-  arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
+  arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; sourceWidth: 640; sourceHeight: 480; displayWidth: 640; displayHeight: 480;"
   loading-screen="enabled: false">
 
   <a-assets>
     <video
       id="offer-video"
-      src="demo-clinica.oferta.mp4.mp4"
-      preload="auto"
+      data-src="demo-clinica.oferta.mp4.mp4"
+      preload="none"
       loop
       muted
       playsinline
@@ -239,7 +239,8 @@
       crossorigin="anonymous"></video>
   </a-assets>
 
-  <a-marker preset="hiro" id="hiro-marker" emitevents="true">
+  <a-marker preset="hiro" id="hiro-marker" emitevents="true"
+    smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
     <a-entity id="ar-content" scale="0.5 0.5 0.5">
       <a-video
         src="#offer-video"
@@ -302,6 +303,7 @@
   const volumeSlider     = document.getElementById("volume-slider");
 
   let audioUnlocked   = false;
+  let videoSourceLoaded = false;
 
   function showToast(msg){
     toastEl.textContent = msg;
@@ -338,6 +340,13 @@
   // ---- Ciclo de vida del marcador ----
   marker.addEventListener("markerFound", function(){
     markerHint.classList.add("hidden");
+
+    if (!videoSourceLoaded) {
+      videoSourceLoaded = true;
+      offerVideo.src = offerVideo.dataset.src;
+      offerVideo.load();
+    }
+
     const p = offerVideo.play();
     if (p && p.catch) p.catch(function(){});
   });
