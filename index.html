@@ -159,7 +159,7 @@
     CUPON_CODE: "PROMO001",
 
     // Webhook de Zapier (Catch Hook → Google Sheets: Create Spreadsheet Row)
-    ZAPIER_WEBHOOK_URL: "https://hooks.zapier.com/hooks/catch/28340642/44folof/",
+    ZAPIER_WEBHOOK_URL: "https://hook.us2.make.com/jwg1pabbeyl2bqf0gx7k9ka3ddy72bxh",
 
     // Nombre de la promo/tratamiento que se registra en el CRM al interactuar
     TRATAMIENTO_PROMO: "Consulta general (Demo AR)"
@@ -384,16 +384,15 @@
     }
 
     const payload = {
-      whatsapp: whatsapp || "",
       nombre: nombre || "",
+      whatsapp: whatsapp || "",
       tratamiento: tratamiento,
       estado: estado || "En conversación"
     };
 
     fetch(CONFIG.ZAPIER_WEBHOOK_URL, {
       method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     }).catch(function(err){
       console.warn("[CRM] No se pudo registrar la acción:", err);
