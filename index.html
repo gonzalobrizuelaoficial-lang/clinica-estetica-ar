@@ -262,9 +262,11 @@
       crossorigin="anonymous"></video>
   </a-assets>
 
-  <!-- Marcador HIRO real: solo el video se ancla acá, con smoothing agresivo
-       para eliminar el temblor de pose que antes motivó pasar a HUD fijo. -->
-  <a-marker preset="hiro" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
+  <!-- Marcador con patrón propio (marcador-mio-up.patt) pensado para cartel/banner
+       fijo en pared vertical: solo el celular se mueve, así que el smoothing se
+       afina para estabilidad máxima (más frames promediados, más debounce ante
+       saltos por pérdida momentánea de tracking al acercar/alejar el teléfono). -->
+  <a-marker type="pattern" url="marcador-mio-up.patt" smooth="true" smoothCount="20" smoothTolerance="0.015" smoothThreshold="10">
     <a-video
       src="#offer-video"
       width="1"
