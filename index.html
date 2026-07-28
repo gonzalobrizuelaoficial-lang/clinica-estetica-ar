@@ -266,13 +266,14 @@
        fijo en pared vertical: solo el celular se mueve, así que el smoothing se
        afina para estabilidad máxima (más frames promediados, más debounce ante
        saltos por pérdida momentánea de tracking al acercar/alejar el teléfono). -->
-  <a-marker type="pattern" url="marcador-mio-up.patt" smooth="true" smoothCount="20" smoothTolerance="0.015" smoothThreshold="10">
+  <a-marker type="pattern" url="marcador-mio-up.patt" smooth="true" smoothCount="8" smoothTolerance="0.015" smoothThreshold="10">
     <a-video
       src="#offer-video"
       width="1"
       height="1.77"
       scale="3 3 3"
       position="0 2.77 0"
+      rotation="-90 0 0"
       material="shader: flat"></a-video>
   </a-marker>
 
