@@ -391,7 +391,13 @@
     logToCRM("Visita recibida en sala de espera");
   });
 
-  // ---- CRM: log a Google Sheets vía Zapier Webhook (4 campos: whatsapp, nombre, tratamiento, estado) ----
+  // ---- CRM: log a Google Sheets vía Zapier Webhook (5 campos: fecha, nombre, whatsapp, tratamiento, estado) ----
+  function getFechaHoy(){
+    const d = new Date();
+    const pad2 = n => String(n).padStart(2, "0");
+    return pad2(d.getDate()) + "/" + pad2(d.getMonth() + 1) + "/" + d.getFullYear();
+  }
+
   function logToCRM(tratamiento, nombre, whatsapp, estado){
     if (!CONFIG.ZAPIER_WEBHOOK_URL || CONFIG.ZAPIER_WEBHOOK_URL.indexOf("PEGAR_URL") !== -1) {
       console.warn("[CRM] ZAPIER_WEBHOOK_URL no configurada, se omite el registro.");
@@ -399,8 +405,9 @@
     }
 
     const payload = {
+      fecha: getFechaHoy(),
       nombre: nombre || "",
-      whatsapp: whatsapp || "",
+      whatsapp: (whatsapp || "").replace(/\D/g, ""),
       tratamiento: tratamiento,
       estado: estado || "En conversación"
     };
