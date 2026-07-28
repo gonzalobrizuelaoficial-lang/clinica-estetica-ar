@@ -81,13 +81,37 @@
   }
 
   #toast{
-    position:fixed; left:50%; bottom:112px; transform:translateX(-50%) translateY(10px);
+    position:fixed; left:50%; bottom:150px; transform:translateX(-50%) translateY(10px);
     z-index:40; background: var(--accent); color:#04211a; font-weight:700; font-size:.8rem;
     padding:9px 16px; border-radius:999px; opacity:0; pointer-events:none;
     transition: opacity .25s ease, transform .25s ease;
     white-space:nowrap;
   }
   #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ---- Barra de botones de acción (overlay DOM fijo, independiente del tracking AR) ---- */
+  #action-bar{
+    position:fixed; left:0; right:0; bottom:calc(18px + env(safe-area-inset-bottom, 0px));
+    z-index:20;
+    display:flex; flex-wrap:wrap; justify-content:center; align-items:center;
+    gap:8px 10px; padding:0 16px;
+    opacity:0; pointer-events:none;
+    transition: opacity .35s ease;
+  }
+  #action-bar.visible{ opacity:1; pointer-events:auto; }
+  #action-bar button{
+    border:none; border-radius:999px; cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+    font-family:inherit; font-weight:700; font-size:.74rem;
+    padding:13px 16px; white-space:nowrap;
+    box-shadow:0 6px 16px rgba(0,0,0,.35);
+    animation: btn-pulse 1.1s ease-in-out infinite;
+  }
+  #action-bar button:active{ animation-play-state:paused; transform:scale(.94); }
+  #action-btn-whatsapp{ background:#25d366; color:#04211a; animation-delay:0s; }
+  #action-btn-cupon{ background:var(--accent); color:#04211a; animation-delay:.13s; }
+  #action-btn-instagram{ background:#e1306c; color:#fff; animation-delay:.26s; }
+  @keyframes btn-pulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.05); } }
 
   /* ---- Gate de captura de leads (tapa la escena hasta completar el formulario) ---- */
   #lead-gate{
@@ -207,8 +231,15 @@
   </div>
 </div>
 
+<div id="action-bar">
+  <button id="action-btn-whatsapp" type="button">WhatsApp Exclusivo</button>
+  <button id="action-btn-cupon" type="button"><span id="action-btn-cupon-label">Cupón Oportunidad</span></button>
+  <button id="action-btn-instagram" type="button">Instagram</button>
+</div>
+
 <!-- ============================================================
-     ESCENA AR.js — marcador HIRO real (video + botones anclados al marcador)
+     ESCENA AR.js — marcador HIRO real (video anclado al marcador; los
+     botones de acción viven fuera, en el overlay DOM #action-bar)
      ============================================================ -->
 <a-scene
   id="ar-scene"
@@ -231,8 +262,8 @@
       crossorigin="anonymous"></video>
   </a-assets>
 
-  <!-- Marcador HIRO real: video y botones vuelven a anclarse a él, con smoothing
-       agresivo para eliminar el temblor de pose que antes motivó pasar a HUD fijo. -->
+  <!-- Marcador HIRO real: solo el video se ancla acá, con smoothing agresivo
+       para eliminar el temblor de pose que antes motivó pasar a HUD fijo. -->
   <a-marker preset="hiro" smooth="true" smoothCount="10" smoothTolerance="0.01" smoothThreshold="5">
     <a-video
       src="#offer-video"
@@ -241,36 +272,9 @@
       scale="3 3 3"
       position="0 2.77 0"
       material="shader: flat"></a-video>
-
-    <a-entity id="btn3d-whatsapp" class="btn3d" position="-1.05 -0.15 0" scale="1.6 1.6 1.6"
-      animation="property: scale; from: 1.6 1.6 1.6; to: 1.76 1.76 1.76; dir: alternate; dur: 850; loop: true; easing: easeInOutSine; delay: 0">
-      <a-plane class="raycastable" width="0.58" height="0.16" color="#25d366" radius="0.04"
-        material="shader: flat; opacity: 0.95"></a-plane>
-      <a-text value="WhatsApp Exclusivo" align="center" color="#04211a" width="1.1"
-        position="0 0 0.01"></a-text>
-    </a-entity>
-
-    <a-entity id="btn3d-cupon" class="btn3d" position="0 -0.15 0" scale="1.6 1.6 1.6"
-      animation="property: scale; from: 1.6 1.6 1.6; to: 1.76 1.76 1.76; dir: alternate; dur: 850; loop: true; easing: easeInOutSine; delay: 130">
-      <a-plane class="raycastable" width="0.58" height="0.16" color="#17d1a3" radius="0.04"
-        material="shader: flat; opacity: 0.95"></a-plane>
-      <a-text id="btn3d-cupon-text" value="Cupón Oportunidad" align="center" color="#04211a" width="1.05"
-        position="0 0 0.01"></a-text>
-    </a-entity>
-
-    <a-entity id="btn3d-instagram" class="btn3d" position="1.05 -0.15 0" scale="1.6 1.6 1.6"
-      animation="property: scale; from: 1.6 1.6 1.6; to: 1.76 1.76 1.76; dir: alternate; dur: 850; loop: true; easing: easeInOutSine; delay: 260">
-      <a-plane class="raycastable" width="0.58" height="0.16" color="#e1306c" radius="0.04"
-        material="shader: flat; opacity: 0.95"></a-plane>
-      <a-text value="Instagram" align="center" color="#ffffff" width="1.1"
-        position="0 0 0.01"></a-text>
-    </a-entity>
   </a-marker>
 
-  <a-entity camera
-    raycaster="objects: .raycastable; far: 10"
-    cursor="rayOrigin: mouse; fuse: false">
-  </a-entity>
+  <a-entity camera></a-entity>
 </a-scene>
 
 <div id="toast"></div>
@@ -289,6 +293,7 @@
   const offerVideo     = document.getElementById("offer-video");
   const toastEl         = document.getElementById("toast");
   const soundControl    = document.getElementById("sound-control");
+  const actionBar       = document.getElementById("action-bar");
   const soundToggle     = document.getElementById("sound-toggle");
   const soundLabel      = document.getElementById("sound-label");
   const volumeWrap       = document.getElementById("volume-slider-wrap");
@@ -366,6 +371,7 @@
     if (marker) {
       marker.addEventListener("markerFound", function(){
         soundControl.classList.add("visible");
+        actionBar.classList.add("visible");
       }, { once: true });
     }
 
@@ -433,7 +439,7 @@
     setTimeout(boot, 500);
   });
 
-  // ---- Botones de acción (usados por los 3 botones 3D) ----
+  // ---- Botones de acción (barra fija DOM, independiente de la escena AR) ----
   function handleWhatsappClick(){
     logToCRM("WhatsApp Exclusivo", leadNombre, leadWhatsapp, "Click botón WhatsApp");
     const url = "https://wa.me/" + CONFIG.WHATSAPP_NUMBER + "?text=" + encodeURIComponent(CONFIG.WHATSAPP_MESSAGE);
@@ -459,10 +465,10 @@
 
   function handleCuponClick(){
     logToCRM("Cupón Oportunidad", leadNombre, leadWhatsapp, "Click botón Cupón");
-    const cupon3dText = document.getElementById("btn3d-cupon-text");
+    const cuponLabel = document.getElementById("action-btn-cupon-label");
 
     function onCopied(){
-      if (cupon3dText) cupon3dText.setAttribute("value", "¡Copiado!");
+      if (cuponLabel) cuponLabel.textContent = "¡Copiado!";
       if (window.Swal) {
         Swal.fire({
           title: "Cupón Oportunidad Copiado",
@@ -473,7 +479,7 @@
         showToast("Cupón copiado: " + CONFIG.CUPON_CODE);
       }
       setTimeout(function(){
-        if (cupon3dText) cupon3dText.setAttribute("value", "Cupón Oportunidad");
+        if (cuponLabel) cuponLabel.textContent = "Cupón Oportunidad";
       }, 2000);
     }
 
@@ -488,9 +494,9 @@
     }
   }
 
-  document.getElementById("btn3d-whatsapp").addEventListener("click", handleWhatsappClick);
-  document.getElementById("btn3d-instagram").addEventListener("click", handleInstagramClick);
-  document.getElementById("btn3d-cupon").addEventListener("click", handleCuponClick);
+  document.getElementById("action-btn-whatsapp").addEventListener("click", handleWhatsappClick);
+  document.getElementById("action-btn-instagram").addEventListener("click", handleInstagramClick);
+  document.getElementById("action-btn-cupon").addEventListener("click", handleCuponClick);
 
 })();
 </script>
