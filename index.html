@@ -120,9 +120,7 @@
     animation: btn-pulse 1.1s ease-in-out infinite;
   }
   #action-bar button:active{ animation-play-state:paused; transform:scale(.94); }
-  #action-btn-whatsapp{ background:#25d366; color:#04211a; animation-delay:0s; }
-  #action-btn-cupon{ background:var(--accent); color:#04211a; animation-delay:.13s; }
-  #action-btn-instagram{ background:#e1306c; color:#fff; animation-delay:.26s; }
+  #action-btn-regalo{ background:#25d366; color:#04211a; }
   @keyframes btn-pulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.05); } }
 
   /* ---- Gate de captura de leads (tapa la escena hasta completar el formulario) ---- */
@@ -181,13 +179,7 @@
   const CONFIG = {
     // número de WhatsApp con código de país, solo dígitos
     WHATSAPP_NUMBER: "543812124512",
-    WHATSAPP_MESSAGE: "Hola! Acabo de activar mi Acceso Exclusivo. Quiero más info sobre la Oportunidad de hoy",
-
-    // usuario de Instagram (sin @)
-    INSTAGRAM_HANDLE: "as.esteticatucuman",
-
-    // código de cupón que se copia al portapapeles
-    CUPON_CODE: "PROMO001",
+    WHATSAPP_MESSAGE: "Hola! Quiero reclamar mi beneficio de Mio Up",
 
     // Webhook de Zapier (Catch Hook → Google Sheets: Create Spreadsheet Row)
     ZAPIER_WEBHOOK_URL: "https://hook.us2.make.com/jwg1pabbeyl2bqf0gx7k9ka3ddy72bxh",
@@ -244,9 +236,7 @@
 </div>
 
 <div id="action-bar">
-  <button id="action-btn-whatsapp" type="button">WhatsApp Exclusivo</button>
-  <button id="action-btn-cupon" type="button"><span id="action-btn-cupon-label">Cupón Oportunidad</span></button>
-  <button id="action-btn-instagram" type="button">Instagram</button>
+  <button id="action-btn-regalo" type="button">🎁 RECLAMAR MI REGALO</button>
 </div>
 
 <!-- ============================================================
@@ -324,6 +314,11 @@
   let videoSourceLoaded = false;
   let leadNombre = "";
   let leadWhatsapp = "";
+
+  // Candado: evita registrar el mismo lead dos veces en la misma sesión
+  // (p.ej. si iOS mata la cámara en background y el código hace location.reload()).
+  let yaRegistrado = false;
+  if (sessionStorage.getItem("mioup_yaRegistrado") === "1") yaRegistrado = true;
 
   function showToast(msg, duration = 2200){
     toastEl.textContent = msg;
@@ -474,7 +469,7 @@
   });
 
   document.addEventListener("DOMContentLoaded", function(){
-    logToCRM("Visita recibida en sala de espera");
+    logToCRM(CONFIG.TRATAMIENTO_PROMO);
   });
 
   // ---- CRM: log a Google Sheets vía Zapier Webhook (5 campos: fecha, nombre, whatsapp, tratamiento, estado) ----
@@ -527,69 +522,23 @@
     leadNombre = nombre;
     leadWhatsapp = whatsapp;
 
-    logToCRM("Acceso Exclusivo (Lead Gate)", nombre, whatsapp, "Nuevo Lead");
+    if (!yaRegistrado) {
+      yaRegistrado = true;
+      sessionStorage.setItem("mioup_yaRegistrado", "1");
+      logToCRM("Acceso Exclusivo (Lead Gate)", nombre, whatsapp, "Nuevo Lead");
+    }
     hideGate();
     setTimeout(boot, 500);
   });
 
-  // ---- Botones de acción (barra fija DOM, independiente de la escena AR) ----
-  function handleWhatsappClick(){
-    logToCRM("WhatsApp Exclusivo", leadNombre, leadWhatsapp, "Click botón WhatsApp");
+  // ---- Botón de acción único (barra fija DOM, independiente de la escena AR) ----
+  function handleRegaloClick(){
+    logToCRM(CONFIG.TRATAMIENTO_PROMO, leadNombre, leadWhatsapp, "Clic en Promo");
     const url = "https://wa.me/" + CONFIG.WHATSAPP_NUMBER + "?text=" + encodeURIComponent(CONFIG.WHATSAPP_MESSAGE);
     window.open(url, "_blank");
   }
 
-  function handleInstagramClick(){
-    logToCRM("Instagram", leadNombre, leadWhatsapp, "Click botón Instagram");
-    window.open("https://instagram.com/" + CONFIG.INSTAGRAM_HANDLE, "_blank");
-  }
-
-  function fallbackCopy(text){
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    try { document.execCommand("copy"); } catch (e) {}
-    document.body.removeChild(ta);
-  }
-
-  function handleCuponClick(){
-    logToCRM("Cupón Oportunidad", leadNombre, leadWhatsapp, "Click botón Cupón");
-    const cuponLabel = document.getElementById("action-btn-cupon-label");
-
-    function onCopied(){
-      if (cuponLabel) cuponLabel.textContent = "¡Copiado!";
-      if (window.Swal) {
-        Swal.fire({
-          title: "Cupón Oportunidad Copiado",
-          html: "Código: <b>" + CONFIG.CUPON_CODE + "</b><br>Validez 24 hs. Pegalo en el chat de WhatsApp para validar tu beneficio.",
-          icon: "success"
-        });
-      } else {
-        showToast("Cupón copiado: " + CONFIG.CUPON_CODE);
-      }
-      setTimeout(function(){
-        if (cuponLabel) cuponLabel.textContent = "Cupón Oportunidad";
-      }, 2000);
-    }
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(CONFIG.CUPON_CODE).then(onCopied).catch(function(){
-        fallbackCopy(CONFIG.CUPON_CODE);
-        onCopied();
-      });
-    } else {
-      fallbackCopy(CONFIG.CUPON_CODE);
-      onCopied();
-    }
-  }
-
-  document.getElementById("action-btn-whatsapp").addEventListener("click", handleWhatsappClick);
-  document.getElementById("action-btn-instagram").addEventListener("click", handleInstagramClick);
-  document.getElementById("action-btn-cupon").addEventListener("click", handleCuponClick);
+  document.getElementById("action-btn-regalo").addEventListener("click", handleRegaloClick);
 
 })();
 </script>
