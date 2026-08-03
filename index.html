@@ -390,6 +390,37 @@
     }, 8000);
   }
 
+  // ---- Re-activación por Visibilidad: al volver de WhatsApp/Instagram, AR.js
+  // deja la cámara en pausa (o el navegador mata el stream, típico en iOS Safari
+  // al pasar la app a background). Reengancha cámara y video de oferta sin
+  // recargar la página para no gastar datos de nuevo. ----
+  document.addEventListener("visibilitychange", function(){
+    if (document.visibilityState !== "visible") return;
+
+    const arjsSystem = arScene.systems && arScene.systems.arjs;
+    const camSource   = arjsSystem && arjsSystem.source;
+    const camVideo    = camSource && camSource.domElement;
+
+    if (camVideo) {
+      const stream = camVideo.srcObject;
+      const streamDead = stream && stream.getVideoTracks().some(function(t){ return t.readyState === "ended"; });
+
+      if (streamDead) {
+        // El SO mató el stream de cámara en background: re-pedir getUserMedia
+        // sin recargar toda la página.
+        camSource.init(function(){});
+      } else if (camVideo.paused) {
+        const p = camVideo.play();
+        if (p && p.catch) p.catch(function(){});
+      }
+    }
+
+    if (offerVideo && offerVideo.paused && offerVideo.src) {
+      const p2 = offerVideo.play();
+      if (p2 && p2.catch) p2.catch(function(){});
+    }
+  });
+
   document.addEventListener("DOMContentLoaded", function(){
     logToCRM("Visita recibida en sala de espera");
   });
