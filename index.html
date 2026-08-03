@@ -266,7 +266,7 @@
     <video
       id="offer-video"
       data-src="demo-clinica.oferta.mp4.mp4"
-      preload="none"
+      preload="auto"
       loop
       muted
       playsinline
@@ -287,8 +287,8 @@
       src="#offer-video"
       width="1"
       height="1.77"
-      scale="1.2 1.2 1.2"
-      position="0 1.1 0"
+      scale="0.84 0.84 0.84"
+      position="0 0.77 0"
       rotation="-90 0 0"
       material="shader: flat"></a-video>
   </a-marker>
@@ -325,10 +325,26 @@
   let leadNombre = "";
   let leadWhatsapp = "";
 
-  function showToast(msg){
+  function showToast(msg, duration = 2200){
     toastEl.textContent = msg;
     toastEl.classList.add("show");
-    setTimeout(() => toastEl.classList.remove("show"), 2200);
+    setTimeout(() => toastEl.classList.remove("show"), duration);
+  }
+
+  function isVideoAsset(){
+    return /\.(mp4|webm|mov|m4v)$/i.test(offerVideo.dataset.src || "");
+  }
+
+  let actionBarRevealScheduled = false;
+  function scheduleActionBarReveal(){
+    if (actionBarRevealScheduled) return;
+    actionBarRevealScheduled = true;
+
+    if (isVideoAsset()) {
+      setTimeout(() => actionBar.classList.add("visible"), 20000);
+    } else {
+      actionBar.classList.add("visible");
+    }
   }
 
   // ---- Audio y volumen ----
@@ -375,6 +391,9 @@
 
     const p = offerVideo.play();
     if (p && p.catch) p.catch(function(){});
+
+    scheduleActionBarReveal();
+    showToast("🎁 Quedate hasta el final para ver tu beneficio exclusivo", 5000);
   }
 
   // ---- Arranque: cámara lista o no soportada ----
@@ -399,7 +418,6 @@
     if (marker) {
       marker.addEventListener("markerFound", function(){
         soundControl.classList.add("visible");
-        actionBar.classList.add("visible");
         markerHint.classList.remove("visible");
       }, { once: true });
     }
