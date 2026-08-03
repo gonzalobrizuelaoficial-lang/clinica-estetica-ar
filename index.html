@@ -89,6 +89,18 @@
   }
   #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
+  /* ---- Hint de búsqueda de marcador: guía al usuario mientras la cámara busca el
+       cartel, desaparece apenas se detecta (ver markerFound) ---- */
+  #marker-hint{
+    position:fixed; left:50%; top:24px; transform:translateX(-50%);
+    z-index:15; max-width:270px; text-align:center;
+    background:rgba(11,12,16,.72); backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,.08); border-radius:14px;
+    padding:10px 16px; font-size:.78rem; color:var(--text);
+    opacity:0; pointer-events:none; transition: opacity .3s ease;
+  }
+  #marker-hint.visible{ opacity:1; }
+
   /* ---- Barra de botones de acción (overlay DOM fijo, independiente del tracking AR) ---- */
   #action-bar{
     position:fixed; left:0; right:0; bottom:calc(18px + env(safe-area-inset-bottom, 0px));
@@ -267,12 +279,16 @@
        afina para estabilidad máxima (más frames promediados, más debounce ante
        saltos por pérdida momentánea de tracking al acercar/alejar el teléfono). -->
   <a-marker type="pattern" url="marcador-mio-up.patt" smooth="true" smoothCount="8" smoothTolerance="0.015" smoothThreshold="10">
+    <!-- scale y position viajan acoplados: position es un offset fijo en el espacio
+         del marcador y NO se ve afectado por el scale de esta misma entidad, así que
+         si se cambia uno hay que reescalar el otro en la misma proporción. Valores
+         de partida razonables — ajustar mirándolo en el celular contra el cartel real. -->
     <a-video
       src="#offer-video"
       width="1"
       height="1.77"
-      scale="3 3 3"
-      position="0 2.77 0"
+      scale="1.2 1.2 1.2"
+      position="0 1.1 0"
       rotation="-90 0 0"
       material="shader: flat"></a-video>
   </a-marker>
@@ -281,6 +297,7 @@
 </a-scene>
 
 <div id="toast"></div>
+<div id="marker-hint">Apuntá la cámara al cartel: buena luz y a unos 40cm–1m de distancia.</div>
 
 <script>
 (function(){
@@ -295,6 +312,7 @@
   const arScene       = document.getElementById("ar-scene");
   const offerVideo     = document.getElementById("offer-video");
   const toastEl         = document.getElementById("toast");
+  const markerHint      = document.getElementById("marker-hint");
   const soundControl    = document.getElementById("sound-control");
   const actionBar       = document.getElementById("action-bar");
   const soundToggle     = document.getElementById("sound-toggle");
@@ -339,16 +357,21 @@
     setTimeout(() => { bootScreen.style.display = "none"; }, 450);
   }
 
+  // ---- Precarga del video de oferta: se dispara apenas arranca boot() (en paralelo
+  // con el permiso de cámara / init de AR.js) en vez de esperar a que la cámara esté
+  // lista, para no perder esos segundos de descarga del archivo (~4MB). ----
+  function preloadOfferVideo(){
+    if (videoSourceLoaded) return;
+    videoSourceLoaded = true;
+    offerVideo.src = offerVideo.dataset.src;
+    offerVideo.load();
+  }
+
   // ---- Revelado: la cámara ya está lista; el video/botones recién aparecen cuando
-  // el marcador HIRO se detecte (ver markerFound más abajo) ----
+  // el marcador se detecte (ver markerFound más abajo) ----
   function revealContent(){
     hideBoot();
-
-    if (!videoSourceLoaded) {
-      videoSourceLoaded = true;
-      offerVideo.src = offerVideo.dataset.src;
-      offerVideo.load();
-    }
+    markerHint.classList.add("visible");
 
     const p = offerVideo.play();
     if (p && p.catch) p.catch(function(){});
@@ -356,6 +379,8 @@
 
   // ---- Arranque: cámara lista o no soportada ----
   function boot(){
+    preloadOfferVideo();
+
     const supportsCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
     if (!supportsCamera) {
@@ -375,6 +400,7 @@
       marker.addEventListener("markerFound", function(){
         soundControl.classList.add("visible");
         actionBar.classList.add("visible");
+        markerHint.classList.remove("visible");
       }, { once: true });
     }
 
@@ -382,7 +408,7 @@
     // getUserMedia se pida justo después del Lead Gate, no al parsear la página.
     arScene.setAttribute("arjs",
       "sourceType: webcam; debugUIEnabled: false; detectionMode: mono; " +
-      "sourceWidth: 640; sourceHeight: 480; displayWidth: 640; displayHeight: 480;");
+      "sourceWidth: 800; sourceHeight: 600; displayWidth: 800; displayHeight: 600;");
 
     // Failsafe: si arjs-video-loaded nunca dispara, no dejar la pantalla de carga trabada
     setTimeout(function(){
@@ -392,13 +418,22 @@
 
   // ---- Re-activación por Visibilidad: al volver de WhatsApp/Instagram, AR.js
   // deja la cámara en pausa (o el navegador mata el stream, típico en iOS Safari
-  // al pasar la app a background). Reengancha cámara y video de oferta sin
-  // recargar la página para no gastar datos de nuevo. ----
+  // al pasar la app a background). AR.js 3.4.5 expone la fuente en
+  // systems.arjs._arSession.arSource (NO systems.arjs.source, que no existe en
+  // esta versión). Si el stream sigue vivo, alcanza con reanudar el <video> sin
+  // recargar nada. Si el SO mató el stream, NO se debe volver a llamar
+  // arSource.init(): eso re-dispara "arjs-video-loaded", que hace que AR.js
+  // reconstruya el ARController entero — y el <a-marker> se engancha a un
+  // ARController específico una sola vez al cargar la página (nunca se
+  // re-suscribe), así que el marcador quedaría permanentemente sin detectar
+  // aunque la cámara vuelva a verse. Para ese caso puntual (poco común: solo
+  // backgrounding prolongado en iOS) se recarga la página como último recurso. ----
   document.addEventListener("visibilitychange", function(){
     if (document.visibilityState !== "visible") return;
 
     const arjsSystem = arScene.systems && arScene.systems.arjs;
-    const camSource   = arjsSystem && arjsSystem.source;
+    const arSession   = arjsSystem && arjsSystem._arSession;
+    const camSource   = arSession && arSession.arSource;
     const camVideo    = camSource && camSource.domElement;
 
     if (camVideo) {
@@ -406,9 +441,8 @@
       const streamDead = stream && stream.getVideoTracks().some(function(t){ return t.readyState === "ended"; });
 
       if (streamDead) {
-        // El SO mató el stream de cámara en background: re-pedir getUserMedia
-        // sin recargar toda la página.
-        camSource.init(function(){});
+        location.reload();
+        return;
       } else if (camVideo.paused) {
         const p = camVideo.play();
         if (p && p.catch) p.catch(function(){});
