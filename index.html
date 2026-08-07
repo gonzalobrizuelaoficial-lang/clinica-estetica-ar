@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Ruleta de Premios — AR FLOW</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -376,10 +379,14 @@
       console.warn('[CRM] MAKE_WEBHOOK_URL no configurada, se omite el registro.');
       return;
     }
+    // Content-Type text/plain evita el preflight CORS (OPTIONS) que muchos
+    // webhooks de Make no responden bien — Make igual parsea el body como JSON.
+    // keepalive asegura el envío aunque la página navegue (ej: al abrir WhatsApp).
     fetch(MAKE_WEBHOOK_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body: JSON.stringify(payload),
+      keepalive: true
     }).catch(function(err){
       console.warn('[CRM] No se pudo registrar la acción:', err);
     });
