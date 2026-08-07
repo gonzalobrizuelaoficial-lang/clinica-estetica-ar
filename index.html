@@ -370,8 +370,16 @@
   }
 
   function formatWhatsapp(raw){
-    const trimmed = (raw || '').trim();
-    return trimmed.charAt(0) === '+' ? trimmed : '+' + trimmed;
+    // Deja solo dígitos: quita espacios, guiones, paréntesis y el signo '+'.
+    const digits = (raw || '').replace(/\D/g, '');
+
+    // Ya viene completo con prefijo argentino (549 + 10 dígitos) -> se conserva tal cual.
+    if (digits.length === 13 && digits.startsWith('549')) return digits;
+
+    // Número local de 10 dígitos (código de área + número, ej. 3816334040) -> anteponer 549.
+    if (digits.length === 10) return '549' + digits;
+
+    return digits;
   }
 
   function postToCRM(payload){
