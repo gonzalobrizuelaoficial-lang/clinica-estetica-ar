@@ -228,7 +228,7 @@
      ============================================================ */
   const LOGO_PATH = 'assets/logo.png';
   const WHATSAPP_NUMBER = '5493816334040'; // con código de país, solo dígitos
-  const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/vuxl7u38fx3mmxa644z3ev176486e8z9'; // Webhook de Make
+  const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/kl9nsa3kkynuig6jo4689f7napvr2u2m'; // Webhook de Make
   const PREMIOS = ['25% de Descuento', '50% de Descuento']; // únicos dos premios posibles
 
   const SECTORS_PER_PRIZE = 3;
@@ -237,6 +237,7 @@
 
   // ---- Audio: ticks de giro + jingle de victoria (Web Audio API, sin archivos externos) ----
   let audioCtx = null;
+  let audioBufferUnlocked = false;
   function getAudioCtx(){
     if (!window.AudioContext && !window.webkitAudioContext) return null;
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -245,10 +246,26 @@
   // Los navegadores móviles crean el AudioContext en estado 'suspended' hasta que
   // un gesto real del usuario lo desbloquea; hay que esperar el resume() (no solo
   // dispararlo) para garantizar que los tonos programados justo después sí suenen.
+  // En Safari/iOS el resume() a veces reporta 'running' sin despertar realmente
+  // el hardware de audio: el desbloqueo real llega recién cuando se dispara un
+  // sonido de verdad en ese mismo gesto (equivalente, en Web Audio API, al viejo
+  // truco de play()+pause()+currentTime=0 con <audio>). Por eso reforzamos con
+  // un buffer silencioso de 1 sample, una sola vez.
   async function unlockAudio(){
     const ctx = getAudioCtx();
-    if (ctx && ctx.state === 'suspended'){
+    if (!ctx) return ctx;
+    if (ctx.state === 'suspended'){
       try { await ctx.resume(); } catch (e) {}
+    }
+    if (!audioBufferUnlocked){
+      try {
+        const silentBuffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = silentBuffer;
+        source.connect(ctx.destination);
+        source.start(0);
+        audioBufferUnlocked = true;
+      } catch (e) {}
     }
     return ctx;
   }
