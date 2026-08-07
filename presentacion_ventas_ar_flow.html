@@ -1,0 +1,770 @@
+<title>AR FLOW de AR Growth Lab: consigue el contacto de cada cliente que entra a tu local</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@700;800&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0A0A;
+    --bg-card:#131313;
+    --bg-card-2:#161616;
+    --cyan:#00E5FF;
+    --amber:#F5A623;
+    --text:#F2F5F5;
+    --muted:#9AA3A3;
+    --border:rgba(0,229,255,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(circle at 10% 0%, rgba(0,229,255,.10), transparent 45%),
+      radial-gradient(circle at 90% 0%, rgba(245,166,35,.08), transparent 45%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Montserrat',sans-serif;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,h4{
+    font-family:'League Spartan',sans-serif;
+    font-weight:800;
+    letter-spacing:.01em;
+    line-height:1.15;
+  }
+  span.hl{color:var(--cyan);}
+  span.hl-amber{color:var(--amber);}
+  .deck{
+    max-width:920px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    padding:28px 20px 110px;
+  }
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:28px;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:'League Spartan',sans-serif;
+    font-weight:800;
+    font-size:15px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    color:var(--text);
+  }
+  .brand::before{
+    content:"";
+    width:10px;height:10px;
+    background:var(--cyan);
+    box-shadow:0 0 14px var(--cyan);
+    border-radius:2px;
+    flex-shrink:0;
+  }
+  .progress{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .dot{
+    width:8px;height:8px;
+    border-radius:50%;
+    background:rgba(154,163,163,.35);
+    transition:all .3s ease;
+  }
+  .dot.active{
+    background:var(--cyan);
+    box-shadow:0 0 10px var(--cyan);
+    width:22px;
+    border-radius:5px;
+  }
+  .slides{flex:1;position:relative;}
+  .slide{
+    display:none;
+    opacity:0;
+    transform:translateX(24px);
+    transition:opacity .45s ease, transform .45s ease;
+  }
+  .slide.active{
+    display:block;
+    opacity:1;
+    transform:translateX(0);
+    animation:slideIn .45s ease;
+  }
+  @keyframes slideIn{
+    from{opacity:0;transform:translateX(24px);}
+    to{opacity:1;transform:translateX(0);}
+  }
+  .eyebrow{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    border:1px solid var(--border);
+    color:var(--cyan);
+    background:rgba(0,229,255,.06);
+    border-radius:999px;
+    padding:6px 16px;
+    font-size:12.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    margin-bottom:18px;
+  }
+  .slide h1{
+    font-size:clamp(28px,5vw,42px);
+    margin-bottom:16px;
+  }
+  .slide-sub{
+    color:var(--muted);
+    font-size:16px;
+    line-height:1.6;
+    max-width:640px;
+    margin-bottom:28px;
+  }
+  .slide-sub b{color:var(--text);}
+  .card{
+    border:1px solid var(--border);
+    background:linear-gradient(180deg,var(--bg-card-2),var(--bg-card));
+    border-radius:16px;
+    padding:22px;
+  }
+  .grid-2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:20px;
+  }
+  .card h3{
+    font-size:16px;
+    margin-bottom:14px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .pain-list{list-style:none;}
+  .pain-list li{
+    display:flex;
+    gap:10px;
+    font-size:14.5px;
+    line-height:1.55;
+    color:var(--muted);
+    padding:8px 0;
+    border-bottom:1px dashed rgba(154,163,163,.15);
+  }
+  .pain-list li:last-child{border-bottom:none;}
+  .pain-list li::before{content:"✕";color:var(--amber);flex-shrink:0;font-weight:700;}
+  .callout{
+    border:1px solid rgba(245,166,35,.35);
+    background:rgba(245,166,35,.07);
+    border-radius:14px;
+    padding:18px 20px;
+    font-size:15px;
+    line-height:1.6;
+    color:var(--text);
+  }
+  .callout b{color:var(--amber);}
+  .callout.cyan{
+    border-color:var(--border);
+    background:rgba(0,229,255,.06);
+  }
+  .callout.cyan b{color:var(--cyan);}
+
+  /* Slide 2: flow steps */
+  .flow{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:22px;
+  }
+  .step{
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    border-radius:16px;
+    padding:20px;
+    position:relative;
+  }
+  .step-num{
+    font-family:'League Spartan',sans-serif;
+    font-weight:800;
+    font-size:13px;
+    color:var(--cyan);
+    background:rgba(0,229,255,.08);
+    border:1px solid var(--border);
+    width:28px;height:28px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:12px;
+  }
+  .step h4{font-size:16px;margin-bottom:8px;}
+  .step p{font-size:13.5px;color:var(--muted);line-height:1.55;}
+
+  /* Slide 3: value stack */
+  .stack{
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    border-radius:18px;
+    padding:8px 24px;
+    margin-bottom:20px;
+  }
+  .stack-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    padding:16px 0;
+    border-bottom:1px dashed rgba(154,163,163,.18);
+  }
+  .stack-row:last-child{border-bottom:none;}
+  .stack-row .item-name{font-size:14.5px;font-weight:600;}
+  .stack-row .item-name small{
+    display:block;
+    font-weight:400;
+    color:var(--muted);
+    font-size:12.5px;
+    margin-top:3px;
+  }
+  .stack-row .item-value{
+    font-family:'League Spartan',sans-serif;
+    font-weight:700;
+    color:var(--muted);
+    white-space:nowrap;
+    text-decoration:line-through;
+    font-size:14px;
+  }
+  .stack-row.anchor .item-value{
+    color:var(--text);
+    text-decoration:none;
+  }
+  .stack-total{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border:1px solid var(--border);
+    background:rgba(0,229,255,.07);
+    border-radius:14px;
+    padding:18px 22px;
+    margin-bottom:22px;
+  }
+  .stack-total .label{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+  .stack-total .amount{
+    font-family:'League Spartan',sans-serif;
+    font-weight:800;
+    font-size:26px;
+    color:var(--cyan);
+  }
+
+  /* Slide 4: mockups del flujo */
+  .mockups{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:16px;
+    margin-bottom:28px;
+  }
+  .mock-item{display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .mock-frame{
+    width:100%;
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    border-radius:16px;
+    padding:18px 14px;
+    min-height:180px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    gap:10px;
+    text-align:center;
+  }
+  .mock-frame.poster{background:linear-gradient(180deg,var(--bg-card-2),var(--bg-card));}
+  .mock-badge{
+    font-family:'League Spartan',sans-serif;
+    font-weight:800;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:var(--amber);
+  }
+  .mock-qr{
+    width:64px;height:64px;
+    border-radius:8px;
+    background:
+      repeating-linear-gradient(45deg, var(--text) 0 4px, transparent 4px 8px),
+      repeating-linear-gradient(-45deg, var(--text) 0 4px, transparent 4px 8px);
+    background-blend-mode:screen;
+    opacity:.85;
+  }
+  .mock-line{font-size:12.5px;color:var(--text);font-weight:600;}
+  .mock-frame.phone{border-color:var(--cyan);box-shadow:0 0 30px rgba(0,229,255,.12);position:relative;}
+  .mock-notch{position:absolute;top:10px;width:36px;height:5px;border-radius:3px;background:rgba(154,163,163,.3);}
+  .mock-screen{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:14px;}
+  .mock-camera{font-size:34px;}
+  .mock-ar-badge{
+    border:1px solid var(--border);
+    background:rgba(0,229,255,.08);
+    color:var(--cyan);
+    font-size:11px;
+    font-weight:700;
+    padding:5px 12px;
+    border-radius:999px;
+  }
+  .mock-frame.chat{align-items:stretch;gap:8px;}
+  .mock-bubble{
+    font-size:11.5px;
+    line-height:1.4;
+    padding:9px 12px;
+    border-radius:12px;
+    max-width:90%;
+  }
+  .mock-bubble.in{align-self:flex-start;background:var(--bg-card-2);border:1px solid var(--border);color:var(--text);border-bottom-left-radius:3px;}
+  .mock-bubble.out{align-self:flex-end;background:var(--cyan);color:#031014;font-weight:600;border-bottom-right-radius:3px;}
+  .mock-caption{font-size:12.5px;color:var(--muted);}
+
+  .section-label{
+    font-family:'League Spartan',sans-serif;
+    font-weight:800;
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:var(--text);
+    margin-bottom:14px;
+  }
+  .price-rule{
+    font-size:13px;
+    color:var(--muted);
+    line-height:1.55;
+    margin-bottom:18px;
+  }
+  .price-rule b{color:var(--text);}
+
+  /* Slide 4: pricing */
+  .plans{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:14px;
+    margin-bottom:22px;
+  }
+  .plan{
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    border-radius:16px;
+    padding:20px 16px;
+    position:relative;
+  }
+  .plan.recommended{
+    border-color:var(--cyan);
+    background:linear-gradient(180deg,rgba(0,229,255,.09),var(--bg-card));
+    box-shadow:0 0 30px rgba(0,229,255,.1);
+  }
+  .plan .tag{
+    position:absolute;top:-11px;left:16px;
+    background:var(--cyan);
+    color:#031014;
+    font-size:10.5px;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    padding:3px 10px;
+    border-radius:999px;
+  }
+  .plan h4{font-size:16px;margin-bottom:4px;}
+  .plan .desc{font-size:12px;color:var(--muted);margin-bottom:14px;min-height:32px;}
+  .plan .price-old{font-size:12px;color:var(--muted);text-decoration:line-through;}
+  .plan .price-new{
+    font-family:'League Spartan',sans-serif;
+    font-weight:800;
+    font-size:24px;
+    color:var(--text);
+    margin:2px 0 12px;
+  }
+  .plan .maint{font-size:11.5px;color:var(--muted);line-height:1.7;border-top:1px dashed rgba(154,163,163,.18);padding-top:10px;}
+  .plan .maint b{color:var(--text);font-weight:600;}
+
+  .guarantees{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin-bottom:22px;
+  }
+  .guarantee h4{font-size:15px;margin-bottom:8px;color:var(--amber);}
+  .guarantee p{font-size:13.5px;color:var(--muted);line-height:1.55;}
+
+  .tyc{
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    border-radius:16px;
+    padding:20px 22px;
+    margin-bottom:24px;
+  }
+  .tyc h4{font-size:14px;margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text);}
+  .tyc ul{list-style:none;}
+  .tyc li{
+    font-size:13px;
+    color:var(--muted);
+    line-height:1.6;
+    padding:7px 0;
+    border-bottom:1px dashed rgba(154,163,163,.13);
+  }
+  .tyc li:last-child{border-bottom:none;}
+  .tyc li b{color:var(--text);}
+
+  .cta-final{
+    text-align:center;
+    padding:30px 10px 10px;
+  }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:var(--cyan);
+    color:#031014;
+    font-family:'League Spartan',sans-serif;
+    font-weight:800;
+    font-size:15px;
+    padding:14px 30px;
+    border-radius:999px;
+    box-shadow:0 0 40px rgba(0,229,255,.25);
+    margin-bottom:14px;
+  }
+  .cta-final .valid{font-size:12.5px;color:var(--muted);}
+  .signature{margin-top:18px;font-size:13px;color:var(--muted);}
+  .signature .name{font-family:'League Spartan',sans-serif;font-weight:800;color:var(--text);font-size:14px;}
+
+  /* Nav bar */
+  .navbar{
+    position:fixed;
+    bottom:0;left:0;right:0;
+    display:flex;
+    justify-content:center;
+    padding:16px 20px calc(16px + env(safe-area-inset-bottom));
+    background:linear-gradient(0deg, rgba(10,10,10,.96) 60%, transparent);
+    z-index:10;
+  }
+  .navbar-inner{
+    max-width:920px;
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .nav-btn{
+    font-family:'League Spartan',sans-serif;
+    font-weight:800;
+    font-size:14px;
+    border-radius:999px;
+    padding:14px 24px;
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    color:var(--text);
+    cursor:pointer;
+    transition:all .2s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .nav-btn:hover{border-color:var(--cyan);}
+  .nav-btn:disabled{opacity:.35;cursor:default;}
+  .nav-btn:disabled:hover{border-color:var(--border);}
+  .nav-btn.primary{
+    background:var(--cyan);
+    color:#031014;
+    box-shadow:0 0 30px rgba(0,229,255,.2);
+    flex:1;
+    max-width:280px;
+    text-align:center;
+  }
+  .nav-center{font-size:12.5px;color:var(--muted);font-weight:600;}
+
+  @media (max-width:720px){
+    .grid-2,.flow,.plans,.guarantees{grid-template-columns:1fr;}
+    .plan.recommended{order:-1;}
+    .deck{padding:22px 16px 120px;}
+    .mockups{grid-template-columns:1fr;}
+  }
+</style>
+
+<div class="deck">
+  <div class="topbar">
+    <div class="brand">AR Growth Lab</div>
+    <div class="progress" id="progress"></div>
+  </div>
+
+  <div class="slides">
+
+    <!-- SLIDE 1 — EL DIAGNÓSTICO -->
+    <section class="slide active" data-slide="0">
+      <div class="eyebrow">⚠️ El Problema</div>
+      <h1>Entra gente a tu local. No compra. Y <span class="hl">no te queda ni su nombre ni su WhatsApp</span>.</h1>
+      <p class="slide-sub">Mira, pregunta, no compra hoy... y se va sin dejarte ni el nombre. Ahí no perdiste una venta: perdiste la chance de venderle <b>en cualquier otro momento</b>.</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>🧍 El que no compró hoy</h3>
+          <ul class="pain-list">
+            <li>Capaz vuelve. Capaz no. Sin su nombre y WhatsApp, nunca lo vas a saber.</li>
+            <li>No le podés avisar de descuentos ni invitarlo de nuevo.</li>
+            <li>Esa visita te costó plata o esfuerzo. Y no te dejó nada.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>🕳️ Se te escapan los contactos</h3>
+          <ul class="pain-list">
+            <li>No tenés nombre, ni WhatsApp, ni mail de quien caminó por tu local.</li>
+            <li>Cada visita nueva es alguien que quizás nunca vuelvas a ver.</li>
+            <li>Sin sus datos, no hay segunda oportunidad.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">
+        <b>Un dato real</b> (estudio de Thanx, publicado en PR Newswire, sobre 18 millones de compras): <b>7 de cada 10 personas que entran por primera vez a un local, no vuelven nunca más</b>. Si no le pediste el nombre y el WhatsApp en esa visita, la perdiste para siempre.
+      </div>
+    </section>
+
+    <!-- SLIDE 2 — EL MECANISMO UNIFICADO -->
+    <section class="slide" data-slide="1">
+      <div class="eyebrow">⚙️ Cómo Funciona</div>
+      <h1>AR FLOW: <span class="hl">de la vereda a la caja</span>, sin perder a nadie en el camino.</h1>
+      <p class="slide-sub">Un camino simple de 4 pasos. Convierte a un curioso en un cliente con nombre, WhatsApp y ganas de comprar, <b>antes</b> de que se vaya.</p>
+
+      <div class="flow">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h4>📱 Escanea un código</h4>
+          <p>Un cartel que da curiosidad. Escanea el código para saber qué es.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h4>✍️ Deja su nombre</h4>
+          <p>Pide nombre y WhatsApp antes de ver nada más. Se guarda solo, sin que hagas nada.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h4>✨ La cámara hace magia</h4>
+          <p>Se abre la cámara sin bajar ninguna app. Ahí aparece el video, flotando en la mesa.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <h4>💬 Cierre directo en WhatsApp</h4>
+          <p>Un botón manda un mensaje ya escrito: "Gané el 20% y quiero reclamarlo". El vendedor atiende y le puede ofrecer algo más.</p>
+        </div>
+      </div>
+
+      <div class="callout cyan">
+        <b>Cada dato cae solo en tu propia planilla de Google</b>, ordenada y lista para usar. Ahí armás tu lista de clientes, para venderle una segunda y tercera vez sin gastar en publicidad de nuevo.
+      </div>
+    </section>
+
+    <!-- SLIDE 3 — LA OFERTA DE LANZAMIENTO -->
+    <section class="slide" data-slide="2">
+      <div class="eyebrow">⚡ Oferta de Lanzamiento</div>
+      <h1>Válida hasta el <span class="hl">31 de Agosto</span>, o hasta los primeros <span class="hl">5 lugares</span> — lo que pase primero.</h1>
+      <p class="slide-sub">Elegí tu plan y arrancá hoy mismo.</p>
+
+      <p class="price-rule">La <b>instalación</b> es el pago único. El <b>mantenimiento</b> es lo que pagás todos los meses. Son dos cosas separadas.</p>
+
+      <div class="plans">
+        <div class="plan">
+          <h4>Plan Basic</h4>
+          <div class="desc">Una imagen fija cuando apuntás con la cámara.<br>Para arrancar simple, gastando lo menos posible.</div>
+          <div class="price-old">Valor regular $400.000</div>
+          <div class="price-new">$320.000</div>
+          <div class="maint">
+            <b>Mantenimiento mensual</b><br>
+            1 local: $150.000/mes<br>
+            2 locales / 1 planilla: $250.000/mes<br>
+            3 locales / 1 planilla: $300.000/mes
+          </div>
+        </div>
+        <div class="plan recommended">
+          <div class="tag">Recomendado</div>
+          <h4>Plan Gold</h4>
+          <div class="desc">Una experiencia en video, en realidad aumentada, cuando apuntás con la cámara.<br><b>La mejor relación entre precio y resultado:</b> consigue más contactos y hace que la gente vuelva más veces.</div>
+          <div class="price-old">Valor regular $600.000</div>
+          <div class="price-new">$399.000</div>
+          <div class="maint">
+            <b>Mantenimiento mensual</b><br>
+            1 local: $150.000/mes<br>
+            2 locales / 1 planilla: $250.000/mes<br>
+            3 locales / 1 planilla: $300.000/mes
+          </div>
+        </div>
+        <div class="plan">
+          <h4>Plan Scale</h4>
+          <div class="desc">Para más de un local, hasta 3 locales.<br>Pensado para franquicias o negocios con varias sucursales.</div>
+          <div class="price-old">Valor regular $900.000</div>
+          <div class="price-new">$599.000</div>
+          <div class="maint">
+            <b>Mantenimiento mensual</b><br>
+            2 locales / 1 planilla: $250.000/mes<br>
+            3 locales / 1 planilla: $300.000/mes
+          </div>
+        </div>
+      </div>
+
+      <p class="slide-sub" style="margin-top:28px;">Y todo plan se lleva estos regalos, sin costo extra:</p>
+
+      <div class="stack">
+        <div class="stack-row">
+          <div class="item-name">15 Formas de que Vuelvan<small>Juegos y sorpresas simples para tu local — como una ruleta, un raspadito o un sello de cliente — para que la gente vuelva más seguido</small></div>
+        </div>
+        <div class="stack-row">
+          <div class="item-name">La Puerta de Entrada<small>5 carteles ya escritos, palabra por palabra, para colgar en tu local y que la gente se acerque a escanear</small></div>
+        </div>
+        <div class="stack-row">
+          <div class="item-name">El Manual de Oro<small>Los mensajes de WhatsApp ya escritos para cerrar la venta y ofrecer algo más, adaptados a tu rubro</small></div>
+        </div>
+        <div class="stack-row">
+          <div class="item-name">Calendario de Fechas Especiales 2026<small>Un calendario con las 12 fechas más fuertes del año, como el Cyber y el Hot Sale, y qué hacer en cada una</small></div>
+        </div>
+        <div class="stack-row">
+          <div class="item-name">El Megáfono<small>10 guiones ya escritos, listos para grabar con el celular y llenar tu local</small></div>
+        </div>
+        <div class="stack-row">
+          <div class="item-name">Un WhatsApp Directo con Nosotros<small>Nuestro número para resolver cualquier duda, sin vueltas ni esperas</small></div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <b>⚡ Cupo limitado:</b> este precio es solo para los primeros 5 negocios que se sumen. Cuando se completen los 5 lugares, o llegue el 31 de Agosto —lo que pase primero— el precio vuelve a su valor normal.
+      </div>
+    </section>
+
+    <!-- SLIDE 4 — EL CIERRE -->
+    <section class="slide" data-slide="3">
+      <div class="eyebrow">🤝 El Cierre</div>
+      <h1>Sumate ahora, antes de que <span class="hl">el precio vuelva a subir</span>.</h1>
+      <p class="slide-sub">Así queda cada plan hoy, y así vuelve a quedar apenas se completen los primeros 5 lugares.</p>
+
+      <div class="plans">
+        <div class="plan">
+          <h4>Plan Basic</h4>
+          <div class="desc">Hoy: <b>$320.000</b><br>Después: $400.000</div>
+        </div>
+        <div class="plan recommended">
+          <div class="tag">Recomendado</div>
+          <h4>Plan Gold</h4>
+          <div class="desc">Hoy: <b>$399.000</b><br>Después: $600.000</div>
+        </div>
+        <div class="plan">
+          <h4>Plan Scale</h4>
+          <div class="desc">Hoy: <b>$599.000</b><br>Después: $900.000</div>
+        </div>
+      </div>
+
+      <div class="guarantees">
+        <div class="card guarantee">
+          <h4>⚡ Rapidez Garantizada</h4>
+          <p><b>Planes Basic y Gold.</b> Lo activamos en 72 horas (3 días hábiles) desde que nos mandás tus logos y videos correctos. Si nos pasamos de ese tiempo, la instalación te sale gratis y te devolvemos la seña.</p>
+        </div>
+        <div class="card guarantee">
+          <h4>🔗 Todo Conectado</h4>
+          <p><b>Plan Scale.</b> Instalamos todo en tus locales en 5 días hábiles. Si para ese día no está todo funcionando y conectado a tu planilla central, la instalación te sale gratis.</p>
+        </div>
+      </div>
+
+      <div class="tyc">
+        <h4>Condiciones claras, para que sepas bien qué esperar</h4>
+        <ul>
+          <li><b>Impresión de carteles:</b> nosotros te damos el texto y el código QR. El diseño final del cartel y la impresión las hacés vos, por tu cuenta.</li>
+          <li><b>Si te faltan fotos o videos:</b> te los hacemos nosotros. Cuesta $30.000 extra (para un cartel) o $75.000 extra (para un video de hasta 30 segundos), y en ese caso la entrega se hace en máximo 5 días hábiles.</li>
+          <li><b>Página propia:</b> el servicio funciona dentro de la página web de AR Growth Lab. Si querés que funcione con tu propia dirección web (por ejemplo: tunegocio.com/ar), armar eso tiene un pago único de $50.000.</li>
+          <li><b>Cambios después de la entrega:</b> el pago mensual cubre que todo siga funcionando bien y tu planilla esté al día. Si querés cambiar videos, premios o el diseño, eso se cobra aparte, desde $95.000.</li>
+          <li><b>Si no pagás el mensual:</b> si el pago mensual se atrasa o se corta, apagamos el servicio de la cámara y dejamos de guardar los datos hasta que se ponga al día.</li>
+          <li><b>Ayuda por WhatsApp:</b> te atendemos de Lunes a Viernes de 9 a 18hs, y los Sábados de 9 a 12hs. Los Domingos no atendemos. Después de las 19hs tampoco respondemos, sin excepciones.</li>
+        </ul>
+      </div>
+
+      <div class="callout">
+        <b>⚡ Últimos lugares:</b> este precio es solo para los primeros 5 negocios que se sumen. Después vuelve a su valor normal.
+      </div>
+
+      <div class="cta-final">
+        <div class="pill">🚀 Hablar con AR Growth Lab</div>
+        <div class="valid">Oferta de Lanzamiento válida hasta el 31 de Agosto, o hasta que se completen los 5 lugares</div>
+        <div class="signature">
+          <div class="name">AR Growth Lab</div>
+          Todo lo que tu local necesita para vender más
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div class="navbar">
+  <div class="navbar-inner">
+    <button class="nav-btn" id="btnBack">← Atrás</button>
+    <div class="nav-center" id="navCenter">1 / 4</div>
+    <button class="nav-btn primary" id="btnNext">Siguiente →</button>
+  </div>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var dotsWrap = document.getElementById('progress');
+  var total = slides.length;
+  var current = 0;
+
+  for (var i = 0; i < total; i++) {
+    var d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    dotsWrap.appendChild(d);
+  }
+  var dots = dotsWrap.querySelectorAll('.dot');
+
+  var btnBack = document.getElementById('btnBack');
+  var btnNext = document.getElementById('btnNext');
+  var navCenter = document.getElementById('navCenter');
+
+  function render() {
+    slides.forEach(function (s, idx) {
+      s.classList.toggle('active', idx === current);
+    });
+    dots.forEach(function (d, idx) {
+      d.classList.toggle('active', idx === current);
+    });
+    btnBack.disabled = current === 0;
+    btnNext.textContent = current === total - 1 ? 'Reiniciar ↻' : 'Siguiente →';
+    navCenter.textContent = (current + 1) + ' / ' + total;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  btnBack.addEventListener('click', function () {
+    if (current > 0) { current--; render(); }
+  });
+
+  btnNext.addEventListener('click', function () {
+    if (current < total - 1) { current++; render(); }
+    else { current = 0; render(); }
+  });
+
+  dots.forEach(function (d, idx) {
+    d.style.cursor = 'pointer';
+    d.addEventListener('click', function () { current = idx; render(); });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') btnNext.click();
+    if (e.key === 'ArrowLeft') btnBack.click();
+  });
+
+  var touchStartX = 0;
+  document.addEventListener('touchstart', function (e) {
+    touchStartX = e.changedTouches[0].screenX;
+  }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    var dx = e.changedTouches[0].screenX - touchStartX;
+    if (Math.abs(dx) > 60) {
+      if (dx < 0 && current < total - 1) { current++; render(); }
+      else if (dx > 0 && current > 0) { current--; render(); }
+    }
+  }, { passive: true });
+
+  render();
+</script>
