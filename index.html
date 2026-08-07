@@ -237,8 +237,17 @@
   function getAudioCtx(){
     if (!window.AudioContext && !window.webkitAudioContext) return null;
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume().catch(function(){});
     return audioCtx;
+  }
+  // Los navegadores móviles crean el AudioContext en estado 'suspended' hasta que
+  // un gesto real del usuario lo desbloquea; hay que esperar el resume() (no solo
+  // dispararlo) para garantizar que los tonos programados justo después sí suenen.
+  async function unlockAudio(){
+    const ctx = getAudioCtx();
+    if (ctx && ctx.state === 'suspended'){
+      try { await ctx.resume(); } catch (e) {}
+    }
+    return ctx;
   }
   function playTone(freq, startOffset, duration, type, peakGain){
     const ctx = getAudioCtx();
@@ -384,8 +393,9 @@
     btnSubmit.disabled = true;
     btnSubmit.textContent = 'Enviando...';
 
-    // Desbloquea el AudioContext en el primer gesto real del usuario.
-    getAudioCtx();
+    // Desbloquea el AudioContext en el primer gesto real del usuario (requisito
+    // de autoplay en mobile) para que los sonidos de la ruleta suenen más adelante.
+    unlockAudio();
 
     const nombre = gateNombre.value.trim();
     const whatsapp = gateWhatsapp.value.trim();
@@ -461,10 +471,15 @@
   const wheelLayout = buildWheel();
   let spinning = false;
 
-  btnGirar.addEventListener('click', function(){
+  btnGirar.addEventListener('click', async function(){
     if (spinning) return;
     spinning = true;
     btnGirar.disabled = true;
+
+    // Re-asegura el desbloqueo del AudioContext en este gesto también: si el
+    // navegador lo suspendió entre el submit y ahora, playTick()/playWinJingle()
+    // se quedarían mudos sin este resume() explícito.
+    await unlockAudio();
 
     state.winningPrizeIndex = Math.floor(Math.random() * PREMIOS.length);
 
