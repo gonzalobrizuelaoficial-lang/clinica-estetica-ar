@@ -420,9 +420,8 @@
       fecha: nowDDMMYYYYHHmm(),
       nombre: nombre,
       whatsapp: formatWhatsapp(whatsapp),
-      tratamiento: 'Jugando - Gira ruleta',
-      estado: 'Pendiente',
-      observacion: 'Registrado en mostrador'
+      premio: 'Jugando - Gira ruleta',
+      observaciones: 'Pendiente'
     });
 
     state.nombre = nombre;
@@ -575,9 +574,8 @@
       fecha: nowDDMMYYYYHHmm(),
       nombre: state.nombre,
       whatsapp: formatWhatsapp(state.whatsapp),
-      tratamiento: premio,
-      estado: 'Premio Ganado',
-      observacion: 'Premio confirmado'
+      premio: premio,
+      observaciones: 'Premio Ganado'
     });
   }
 
@@ -589,8 +587,8 @@
       fecha: nowDDMMYYYYHHmm(),
       nombre: state.nombre,
       whatsapp: formatWhatsapp(state.whatsapp),
-      tratamiento: premio,
-      estado: 'Premio Reclamado'
+      premio: premio,
+      observaciones: 'Premio Reclamado'
     });
 
     const msg = '¡Hola! Mi nombre es ' + state.nombre + ', acabo de girar la ruleta en tu local y gané un ' + premio + '. Quiero validarlo ahora en la caja.';
