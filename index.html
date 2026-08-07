@@ -176,6 +176,12 @@
 <video id="camera-bg" autoplay muted playsinline webkit-playsinline></video>
 <div id="fallback-bg"></div>
 
+<!-- Audio silencioso en loop: fuerza a iOS Safari a usar la categoría de sesión
+     "playback", que ignora la llavecita física de silencio del costado del iPhone.
+     Sin esto, el Web Audio API (los tonos de la ruleta) puede quedar mudo aunque
+     el AudioContext esté "running", si el celular tiene el switch en silencio. -->
+<audio id="silent-unlock" src="data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==" loop playsinline webkit-playsinline preload="auto"></audio>
+
 <!-- ================= Fase 2: formulario obligatorio ================= -->
 <div id="phase-form" class="phase">
   <div class="glass-panel">
@@ -266,6 +272,12 @@
         source.start(0);
         audioBufferUnlocked = true;
       } catch (e) {}
+      // Arranca el <audio> silencioso en loop: pone la sesión de audio de iOS en
+      // categoría "playback", que suena aunque el switch físico esté en silencio.
+      const silentTag = document.getElementById('silent-unlock');
+      if (silentTag){
+        silentTag.play().catch(function(){});
+      }
     }
     return ctx;
   }
