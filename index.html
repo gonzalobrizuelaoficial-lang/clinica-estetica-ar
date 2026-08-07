@@ -232,6 +232,38 @@
   const SECTOR_COLORS = ['#0A0A0A', '#00E5FF', '#F5A623'];
   const WHEEL_CX = 150, WHEEL_CY = 150, WHEEL_R = 145;
 
+  // ---- Audio: ticks de giro + jingle de victoria (Web Audio API, sin archivos externos) ----
+  let audioCtx = null;
+  function getAudioCtx(){
+    if (!window.AudioContext && !window.webkitAudioContext) return null;
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(function(){});
+    return audioCtx;
+  }
+  function playTone(freq, startOffset, duration, type, peakGain){
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const t0 = ctx.currentTime + startOffset;
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(peakGain || 0.18, t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.02);
+  }
+  function playTick(){
+    playTone(1200, 0, 0.06, 'square', 0.15);
+  }
+  function playWinJingle(){
+    [523, 659, 784, 1047].forEach(function(freq, i){
+      playTone(freq, i * 0.12, 0.22, 'triangle', 0.2);
+    });
+  }
+
   // ---- Referencias DOM ----
   const cameraBg     = document.getElementById('camera-bg');
   const fallbackBg   = document.getElementById('fallback-bg');
@@ -318,8 +350,16 @@
   }
 
   // ---- CRM: POST fire-and-forget a Make.com ----
-  function todayISO(){
-    return new Date().toISOString().slice(0, 10);
+  function nowDDMMYYYYHHmm(){
+    const d = new Date();
+    const pad = function(n){ return String(n).padStart(2, '0'); };
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() +
+      ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function formatWhatsapp(raw){
+    const trimmed = (raw || '').trim();
+    return trimmed.charAt(0) === '+' ? trimmed : '+' + trimmed;
   }
 
   function postToCRM(payload){
@@ -344,15 +384,19 @@
     btnSubmit.disabled = true;
     btnSubmit.textContent = 'Enviando...';
 
+    // Desbloquea el AudioContext en el primer gesto real del usuario.
+    getAudioCtx();
+
     const nombre = gateNombre.value.trim();
     const whatsapp = gateWhatsapp.value.trim();
 
     // Candado 1: captura preventiva — se dispara ya, independiente de todo lo demás.
     postToCRM({
-      fecha: todayISO(),
+      fecha: nowDDMMYYYYHHmm(),
       nombre: nombre,
-      whatsapp: whatsapp,
-      premio: 'Jugando - Gira ruleta',
+      whatsapp: formatWhatsapp(whatsapp),
+      tratamiento: 'Jugando - Gira ruleta',
+      estado: 'Pendiente',
       observacion: 'Registrado en mostrador'
     });
 
@@ -445,6 +489,28 @@
     });
 
     let done = false;
+
+    // Ticks de audio sincronizados con el ángulo real renderizado por el navegador.
+    let lastSectorIndex = null;
+    function trackSpinAudio(){
+      const style = getComputedStyle(wheelGroup).transform;
+      if (style && style !== 'none'){
+        const matrix = style.match(/matrix\(([^)]+)\)/);
+        if (matrix){
+          const parts = matrix[1].split(',').map(parseFloat);
+          let angle = Math.atan2(parts[1], parts[0]) * 180 / Math.PI;
+          if (angle < 0) angle += 360;
+          const sectorIndex = Math.floor(angle / wheelLayout.anglePerSector);
+          if (sectorIndex !== lastSectorIndex){
+            lastSectorIndex = sectorIndex;
+            playTick();
+          }
+        }
+      }
+      if (!done) requestAnimationFrame(trackSpinAudio);
+    }
+    requestAnimationFrame(trackSpinAudio);
+
     function finish(){
       if (done) return;
       done = true;
@@ -473,18 +539,30 @@
 
     goToPhase(phaseModal);
     fireConfetti();
+    playWinJingle();
 
     postToCRM({
-      fecha: todayISO(),
+      fecha: nowDDMMYYYYHHmm(),
       nombre: state.nombre,
-      whatsapp: state.whatsapp,
-      premio: premio,
+      whatsapp: formatWhatsapp(state.whatsapp),
+      tratamiento: premio,
+      estado: 'Premio Ganado',
       observacion: 'Premio confirmado'
     });
   }
 
   btnReclamar.addEventListener('click', function(){
     const premio = PREMIOS[state.winningPrizeIndex];
+
+    // Registro del reclamo en el CRM antes de abrir WhatsApp.
+    postToCRM({
+      fecha: nowDDMMYYYYHHmm(),
+      nombre: state.nombre,
+      whatsapp: formatWhatsapp(state.whatsapp),
+      tratamiento: premio,
+      estado: 'Premio Reclamado'
+    });
+
     const msg = '¡Hola! Mi nombre es ' + state.nombre + ', acabo de girar la ruleta en tu local y gané un ' + premio + '. Quiero validarlo ahora en la caja.';
     const url = 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(msg);
     window.open(url, '_blank');
