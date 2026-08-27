@@ -109,6 +109,7 @@
   const premioGanadoTexto  = document.getElementById('premio-ganado-texto');
   const premioTexto        = document.getElementById('premio-texto');
   const btnReclamar        = document.getElementById('btn-reclamar');
+  const phaseDuplicate     = document.getElementById('phase-duplicate');
 
   // ---- Aplicar config de campaña a la UI ----
   document.title = config.biz + ' — Ruleta de Premios';
@@ -289,7 +290,7 @@
 
     state.nombre = claimNombre.value.trim();
     state.answeredPairs = collectAnsweredPairs();
-    state.whatsapp = claimWhatsapp.value.trim();
+    state.whatsapp = window.ARFLOW.crm.formatWhatsapp(claimWhatsapp.value.trim());
 
     const pr = buildPreguntaRespuestaPayload(state.answeredPairs);
     state.preguntaCampo = pr.pregunta;
@@ -297,20 +298,53 @@
 
     premioTexto.textContent = 'Ganaste: ' + config.prizes[state.winningPrizeIndex].l;
 
-    // Candado 2: ahora sí van nombre/whatsapp/respuesta completos.
-    window.ARFLOW.crm.postToCRM(config.hook, {
-      fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
-      canal: state.canal,
-      nombre: state.nombre,
-      whatsapp: window.ARFLOW.crm.formatWhatsapp(state.whatsapp),
-      premio: config.prizes[state.winningPrizeIndex].l,
-      pregunta: state.preguntaCampo,
-      respuesta: state.respuestaCampo,
-      session_id: state.sessionId,
-      observaciones: 'Premio Ganado'
-    });
+    // Anti-duplicados: un WhatsApp no puede reclamar dos veces en la misma
+    // campaña dentro de la ventana de días configurada (cfg.cd). Se escopea
+    // por campaña (cfg.cid); si el link es viejo y no trae cid, se escopea
+    // por negocio (cfg.hook) para no quedar sin protección.
+    fetch('/api/check-play', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scopeKey: config.cid || config.hook,
+        whatsapp: state.whatsapp,
+        cooldownDays: config.cd
+      })
+    })
+      .then(function(r){ return r.json(); })
+      .catch(function(){ return { duplicate: false }; }) // fail-open: no bloquear por un error de red
+      .then(function(data){
+        if (data && data.duplicate){
+          window.ARFLOW.crm.postToCRM(config.hook, {
+            fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+            canal: state.canal,
+            nombre: state.nombre,
+            whatsapp: state.whatsapp,
+            premio: config.prizes[state.winningPrizeIndex].l,
+            pregunta: state.preguntaCampo,
+            respuesta: state.respuestaCampo,
+            session_id: state.sessionId,
+            observaciones: 'Intento Duplicado Bloqueado'
+          });
+          goToPhase(phaseDuplicate);
+          return;
+        }
 
-    goToPhase(phaseModal);
+        // Candado 2: ahora sí van nombre/whatsapp/respuesta completos.
+        window.ARFLOW.crm.postToCRM(config.hook, {
+          fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+          canal: state.canal,
+          nombre: state.nombre,
+          whatsapp: state.whatsapp,
+          premio: config.prizes[state.winningPrizeIndex].l,
+          pregunta: state.preguntaCampo,
+          respuesta: state.respuestaCampo,
+          session_id: state.sessionId,
+          observaciones: 'Premio Ganado'
+        });
+
+        goToPhase(phaseModal);
+      });
   });
 
   // ---- Fase 3: reclamo por WhatsApp ----
@@ -321,7 +355,7 @@
       fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
       canal: state.canal,
       nombre: state.nombre,
-      whatsapp: window.ARFLOW.crm.formatWhatsapp(state.whatsapp),
+      whatsapp: state.whatsapp,
       premio: premio,
       pregunta: state.preguntaCampo,
       respuesta: state.respuestaCampo,

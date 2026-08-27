@@ -192,6 +192,14 @@
     50%{ transform:scale(1.045); box-shadow:0 0 22px rgba(245,166,35,.55); }
   }
 
+  /* ================= Fase duplicate: ya participó ================= */
+  #phase-duplicate h2{
+    font-size:1.4rem; font-weight:800; margin:0 0 10px; color:var(--text);
+  }
+  #phase-duplicate p.premio-text{
+    font-size:1rem; color:var(--muted); margin:0; font-weight:500;
+  }
+
   @media (max-height: 560px){
     .glass-panel{ padding:20px 18px; }
     #wheel-wrap{ width:min(76vw, 300px); height:min(76vw, 300px); }
@@ -262,6 +270,14 @@
     <h2>🎉 ¡Felicitaciones!</h2>
     <p class="premio-text" id="premio-texto">Ganaste un premio.</p>
     <button id="btn-reclamar" type="button" aria-label="Reclamar premio en WhatsApp">🎁 Reclamar mi Premio en WhatsApp</button>
+  </div>
+</div>
+
+<!-- ================= Fase duplicate: ya participó con este WhatsApp en esta campaña ================= -->
+<div id="phase-duplicate" class="phase phase-hidden">
+  <div class="glass-panel">
+    <h2>Ya participaste 🙌</h2>
+    <p class="premio-text">Este WhatsApp ya jugó y reclamó un premio hace poco en esta campaña. ¡Gracias por tu interés, volvé a intentar más adelante!</p>
   </div>
 </div>
 

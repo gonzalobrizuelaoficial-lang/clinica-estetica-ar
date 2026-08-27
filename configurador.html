@@ -197,6 +197,11 @@
       <label for="f-canal-etiqueta">Etiqueta (opcional, para distinguir tandas)</label>
       <input id="f-canal-etiqueta" type="text" placeholder="Ej. Reel agosto, Vidriera local">
     </div>
+    <div class="field">
+      <label for="f-cooldown-days">Días sin poder volver a jugar (mismo WhatsApp)</label>
+      <input id="f-cooldown-days" type="number" min="1" step="1" value="30">
+      <p class="hint">Evita que la misma persona reclame el premio dos veces en esta campaña dentro de esta cantidad de días. Si el mismo cliente lanza otra campaña distinta, no se pisan entre sí: cada "Generar link y QR" es independiente.</p>
+    </div>
   </section>
 
   <button id="btn-generar" type="button">Generar link y QR</button>
@@ -328,6 +333,10 @@
       q: q,
       wa: document.getElementById('f-wa').value.replace(/\D/g, ''),
       hook: document.getElementById('f-hook').value.trim(),
+      // Un cid nuevo por cada campaña generada: escopea el anti-duplicado
+      // por campaña, no por negocio (ver server.js /api/check-play).
+      cid: (window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2))).replace(/-/g, '').slice(0, 12),
+      cd: Math.max(1, parseInt(document.getElementById('f-cooldown-days').value, 10) || 30),
       colors: {
         bg: document.getElementById('f-color-bg').value,
         p: document.getElementById('f-color-p').value,

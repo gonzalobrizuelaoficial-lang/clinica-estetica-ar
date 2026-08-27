@@ -17,6 +17,8 @@
     q: ['¿Qué te interesa?'],
     wa: '',
     hook: '',
+    cid: '',
+    cd: 30,
     colors: DEFAULT_COLORS,
     logo: 'assets/logo.png'
   };
@@ -55,6 +57,14 @@
       if (cfg.prizes.length === 0) cfg.prizes = DEFAULT_CONFIG.prizes;
     }
     if (cfg.game !== 'wheel' && cfg.game !== 'scratch') cfg.game = 'wheel';
+    // cid identifica la campaña (una por cada "Generar link y QR") para que el
+    // anti-duplicado escope por campaña y no por negocio — así dos campañas
+    // del mismo cliente en el mismo mes no se bloquean entre sí. Los links
+    // generados antes de este campo no traen cid (queda '', ver app.js para
+    // el fallback a scope por negocio).
+    cfg.cid = typeof cfg.cid === 'string' ? cfg.cid : '';
+    // cd = días sin poder volver a jugar con el mismo WhatsApp en esta campaña.
+    cfg.cd = (typeof cfg.cd === 'number' && cfg.cd > 0) ? Math.min(365, Math.round(cfg.cd)) : 30;
     // Hasta 2 preguntas opcionales. Compatibilidad con links viejos donde
     // `q` era un string único en vez de array.
     if (typeof cfg.q === 'string'){

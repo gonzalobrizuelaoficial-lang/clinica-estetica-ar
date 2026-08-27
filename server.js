@@ -87,6 +87,40 @@ app.get('/s/:code', async function (req, res) {
   }
 });
 
+// ================= Anti-duplicados (un reclamo por WhatsApp por campaña) =================
+// Se escopea por campaña (cid, generado en el configurador al tocar "Generar
+// link y QR"), no por negocio: así dos campañas distintas del mismo cliente
+// en el mismo mes no se bloquean entre sí. La clave se hashea (no se guarda
+// el WhatsApp en texto plano en Redis) y el TTL es la ventana de días que el
+// usuario configuró para esa campaña.
+const COOLDOWN_DAYS_MIN = 1;
+const COOLDOWN_DAYS_MAX = 365;
+
+app.post('/api/check-play', async function (req, res) {
+  const redis = getRedisClient();
+  // Fail-open: si Redis no está configurado o falla, nunca bloqueamos a un
+  // cliente real por un problema de infraestructura del lado nuestro.
+  if (!redis) return res.json({ duplicate: false });
+
+  const scopeKey = req.body && req.body.scopeKey;
+  const whatsapp = req.body && req.body.whatsapp;
+  const cooldownDaysRaw = req.body && req.body.cooldownDays;
+  if (!scopeKey || !whatsapp || typeof scopeKey !== 'string' || typeof whatsapp !== 'string') {
+    return res.status(400).json({ error: 'Falta scopeKey o whatsapp.' });
+  }
+  const cooldownDays = Math.min(COOLDOWN_DAYS_MAX, Math.max(COOLDOWN_DAYS_MIN, parseInt(cooldownDaysRaw, 10) || 30));
+
+  try {
+    const hash = crypto.createHash('sha256').update(scopeKey + ':' + whatsapp).digest('hex');
+    const key = 'played:' + hash;
+    const result = await redis.set(key, '1', { nx: true, ex: cooldownDays * 86400 });
+    res.json({ duplicate: result === null });
+  } catch (err) {
+    console.error('[check-play] error de Redis:', err);
+    res.json({ duplicate: false });
+  }
+});
+
 // ================= Subida de logo =================
 // El logo se embebe directo en el link/QR como data URI (en vez de guardarse
 // como archivo en el servidor) porque el hosting gratuito (Render free) no
