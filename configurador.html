@@ -90,9 +90,6 @@
     padding:11px 16px; border-radius:10px; border:1px solid rgba(255,255,255,.2);
     background:rgba(255,255,255,.06); color:var(--text); font-family:inherit; font-size:.85rem; cursor:pointer;
   }
-  #url-len-warning{ display:none; color:var(--amber); font-size:.78rem; margin-top:8px; }
-  #url-len-warning.visible{ display:block; }
-
   #qr-canvas-wrap{ display:flex; justify-content:center; margin:18px 0; }
   #qr-canvas-wrap canvas{ border-radius:12px; background:#fff; padding:10px; }
   .qr-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
@@ -172,10 +169,15 @@
   </section>
 
   <section class="card">
-    <h2>3. Pregunta clave del formulario final</h2>
+    <h2>3. Preguntas del formulario final (opcionales, hasta 2)</h2>
+    <p class="hint">Se le muestran al ganador antes de reclamar el premio por WhatsApp. Puede dejarlas en blanco: no son obligatorias para el visitante.</p>
     <div class="field">
-      <label for="f-q">Se le pregunta al ganador antes de reclamar el premio por WhatsApp</label>
-      <input id="f-q" type="text" placeholder="Ej. ¿Qué tratamiento te interesa?">
+      <label for="f-q1">Pregunta 1 (opcional)</label>
+      <input id="f-q1" type="text" placeholder="Ej. ¿Qué tratamiento te interesa?">
+    </div>
+    <div class="field">
+      <label for="f-q2">Pregunta 2 (opcional)</label>
+      <input id="f-q2" type="text" placeholder="Ej. ¿Cómo nos conociste?">
     </div>
   </section>
 
@@ -190,34 +192,26 @@
 
   <section class="card">
     <h2>5. Canal de distribución</h2>
+    <p class="hint">Al generar, se crean a la vez un link corto (para compartir por redes/WhatsApp) y un QR — de la misma campaña. En el Sheet vas a ver de cuál de los dos vino cada lead, sin que tengas que elegir nada acá.</p>
     <div class="field">
-      <label for="f-canal">Canal por defecto para este link</label>
-      <select id="f-canal">
-        <option value="qr_local">QR en el local físico</option>
-        <option value="reel">Reel de Instagram</option>
-        <option value="historia">Historia de Instagram</option>
-        <option value="otro">Otro (especificar)</option>
-      </select>
+      <label for="f-canal-etiqueta">Etiqueta (opcional, para distinguir tandas)</label>
+      <input id="f-canal-etiqueta" type="text" placeholder="Ej. Reel agosto, Vidriera local">
     </div>
-    <div class="field" id="canal-otro-wrap" style="display:none;">
-      <label for="f-canal-otro">Nombre del canal</label>
-      <input id="f-canal-otro" type="text" placeholder="Ej. flyer_local">
-    </div>
-    <p class="hint">Para el mismo negocio en otro canal, no hace falta rehacer todo el formulario: generá el link, después volvé a esta sección, cambiá el canal y volvé a tocar "Generar link y QR" — la config del negocio/juego/premios queda igual.</p>
   </section>
 
   <button id="btn-generar" type="button">Generar link y QR</button>
 
   <section class="card" id="output">
     <h2>Campaña generada</h2>
+    <label for="out-link">Link corto para compartir (redes / WhatsApp)</label>
     <div class="link-row">
       <input id="out-link" type="text" readonly>
       <button id="btn-copiar" type="button">Copiar</button>
     </div>
     <span class="copied-flag" id="copied-flag">¡Copiado!</span>
-    <p id="url-len-warning">El link es largo — probá el QR con un lector real antes de imprimirlo, sobre todo en tamaño chico.</p>
     <p id="url-len-error" class="status-msg error"></p>
 
+    <label>QR para imprimir (misma campaña, atribuida por separado)</label>
     <div id="qr-canvas-wrap"><canvas id="qr-canvas"></canvas></div>
     <div class="qr-actions">
       <button id="btn-qr-png" type="button">Descargar QR (PNG)</button>
@@ -284,24 +278,29 @@
   addPrizeRow('25% de Descuento', 3);
   addPrizeRow('50% de Descuento', 1);
 
-  // ---- Canal "otro" ----
-  const fCanal = document.getElementById('f-canal');
-  const canalOtroWrap = document.getElementById('canal-otro-wrap');
-  const fCanalOtro = document.getElementById('f-canal-otro');
-  fCanal.addEventListener('change', function(){
-    canalOtroWrap.style.display = fCanal.value === 'otro' ? '' : 'none';
-  });
-
-  // ---- Generar link + QR ----
+  // ---- Generar link + QR (juntos, auto-atribuidos por canal) ----
   const outputSection = document.getElementById('output');
   const outLink = document.getElementById('out-link');
-  const urlLenWarning = document.getElementById('url-len-warning');
   const urlLenError = document.getElementById('url-len-error');
   const qrCanvas = document.getElementById('qr-canvas');
-  const QR_HARD_LIMIT = 2200; // margen de seguridad bajo el límite real de una QR nivel M (~2331 bytes)
-  let lastUrl = '';
+  const btnGenerar = document.getElementById('btn-generar');
+  let lastUrl = ''; // link corto para compartir (canal=link)
+  let lastQrUrl = ''; // link corto codificado en el QR (canal=qr)
 
-  document.getElementById('btn-generar').addEventListener('click', function(){
+  function shorten(longUrl){
+    return fetch('/api/shorten', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ longUrl: longUrl })
+    }).then(function(r){
+      return r.json().then(function(data){
+        if (!r.ok) throw new Error(data.error || 'No se pudo generar el link corto.');
+        return data.shortUrl;
+      });
+    });
+  }
+
+  btnGenerar.addEventListener('click', function(){
     const prizes = getPrizeRows()
       .filter(function(p){ return p.l !== ''; })
       .map(function(p){ return { l: p.l, w: p.w }; });
@@ -311,7 +310,14 @@
       return;
     }
 
-    const canal = fCanal.value === 'otro' ? (fCanalOtro.value.trim() || 'otro') : fCanal.value;
+    const etiqueta = document.getElementById('f-canal-etiqueta').value.trim();
+    const canalLink = etiqueta ? 'link (' + etiqueta + ')' : 'link';
+    const canalQr = etiqueta ? 'qr (' + etiqueta + ')' : 'qr';
+
+    const q = [
+      document.getElementById('f-q1').value.trim(),
+      document.getElementById('f-q2').value.trim()
+    ].filter(function(v){ return v !== ''; });
 
     const cfg = {
       v: 1,
@@ -319,7 +325,7 @@
       rubro: document.getElementById('f-rubro').value.trim(),
       game: document.getElementById('f-game').value,
       prizes: prizes,
-      q: document.getElementById('f-q').value.trim() || '¿Qué te interesa?',
+      q: q,
       wa: document.getElementById('f-wa').value.replace(/\D/g, ''),
       hook: document.getElementById('f-hook').value.trim(),
       colors: {
@@ -331,29 +337,43 @@
     };
 
     const encoded = window.ARFLOW.config.encodeConfig(cfg);
-    const base = new URL('index.html', window.location.href);
-    base.searchParams.set('cfg', encoded);
-    base.searchParams.set('canal', canal);
-    lastUrl = base.href;
+    const baseLink = new URL('index.html', window.location.href);
+    baseLink.searchParams.set('cfg', encoded);
+    baseLink.searchParams.set('canal', canalLink);
+    const baseQr = new URL('index.html', window.location.href);
+    baseQr.searchParams.set('cfg', encoded);
+    baseQr.searchParams.set('canal', canalQr);
 
-    outLink.value = lastUrl;
-    urlLenWarning.classList.toggle('visible', lastUrl.length > 1200);
-    outputSection.classList.add('visible');
+    btnGenerar.disabled = true;
+    btnGenerar.textContent = 'Generando...';
+    urlLenError.textContent = '';
 
-    if (lastUrl.length > QR_HARD_LIMIT){
-      urlLenError.textContent = 'El link quedó demasiado largo (' + lastUrl.length + ' caracteres) y no entra en un QR. Achicá el logo, la pregunta, el webhook o la cantidad de premios, y volvé a generar.';
-      qrCanvas.getContext('2d').clearRect(0, 0, qrCanvas.width, qrCanvas.height);
-    } else {
-      urlLenError.textContent = '';
-      window.QRCode.toCanvas(qrCanvas, lastUrl, { width: 320, margin: 2, errorCorrectionLevel: 'M' }, function(err){
-        if (err){
-          console.error('[QR] No se pudo generar el QR:', err);
-          urlLenError.textContent = 'No se pudo generar el QR para este link. Achicá el logo, la pregunta o los premios y volvé a intentar.';
-        }
+    Promise.all([shorten(baseLink.href), shorten(baseQr.href)])
+      .then(function(results){
+        lastUrl = results[0];
+        lastQrUrl = results[1];
+
+        outLink.value = lastUrl;
+        outputSection.classList.add('visible');
+
+        window.QRCode.toCanvas(qrCanvas, lastQrUrl, { width: 320, margin: 2, errorCorrectionLevel: 'M' }, function(err){
+          if (err){
+            console.error('[QR] No se pudo generar el QR:', err);
+            urlLenError.textContent = 'No se pudo generar el QR para este link.';
+          }
+        });
+
+        outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      })
+      .catch(function(err){
+        console.error('[shorten]', err);
+        urlLenError.textContent = err.message || 'No se pudo generar el link corto. Revisá que el servidor tenga configurado el shortlink (Upstash Redis).';
+        outputSection.classList.add('visible');
+      })
+      .finally(function(){
+        btnGenerar.disabled = false;
+        btnGenerar.textContent = 'Generar link y QR';
       });
-    }
-
-    outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
   // ---- Copiar link ----
@@ -371,7 +391,7 @@
 
   // ---- Descargar QR ----
   document.getElementById('btn-qr-png').addEventListener('click', function(){
-    if (!lastUrl) return;
+    if (!lastQrUrl) return;
     qrCanvas.toBlob(function(blob){
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -382,8 +402,8 @@
   });
 
   document.getElementById('btn-qr-svg').addEventListener('click', function(){
-    if (!lastUrl) return;
-    window.QRCode.toString(lastUrl, { type: 'svg', margin: 2, errorCorrectionLevel: 'M' }, function(err, svg){
+    if (!lastQrUrl) return;
+    window.QRCode.toString(lastQrUrl, { type: 'svg', margin: 2, errorCorrectionLevel: 'M' }, function(err, svg){
       if (err){ console.error('[QR] No se pudo generar el SVG:', err); return; }
       const blob = new Blob([svg], { type: 'image/svg+xml' });
       const a = document.createElement('a');
@@ -522,7 +542,7 @@
     const fieldMap = [
       ['biz', 'f-biz', 'nombre del negocio'],
       ['rubro', 'f-rubro', 'rubro'],
-      ['q', 'f-q', 'pregunta clave'],
+      ['q', 'f-q1', 'pregunta 1'],
       ['wa', 'f-wa', 'WhatsApp']
     ];
     fieldMap.forEach(function(entry){

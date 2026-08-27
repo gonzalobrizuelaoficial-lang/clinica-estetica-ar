@@ -3,11 +3,22 @@
 
   const config = window.ARFLOW.config.readConfigFromLocation();
 
+  // Identifica la sesión de este visitante en los 3 envíos a Make, para que
+  // el escenario pueda buscar/actualizar la misma fila del Sheet aunque el
+  // primer envío todavía no tenga whatsapp (buscar por whatsapp fallaba ahí).
+  function generateSessionId(){
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+    return 'sid-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
+
   const state = {
     canal: window.ARFLOW.config.readChannelFromLocation(),
+    sessionId: generateSessionId(),
     nombre: '',
     whatsapp: '',
-    respuestaPregunta: '',
+    answeredPairs: [],
+    preguntaCampo: '',
+    respuestaCampo: '',
     winningPrizeIndex: 0
   };
 
@@ -92,8 +103,7 @@
   const btnReveal          = document.getElementById('btn-reveal');
   const claimForm          = document.getElementById('claim-form');
   const claimNombre        = document.getElementById('claim-nombre');
-  const claimPregunta      = document.getElementById('claim-pregunta');
-  const claimPreguntaLabel = document.getElementById('claim-pregunta-label');
+  const claimPreguntasContainer = document.getElementById('claim-preguntas-container');
   const claimWhatsapp      = document.getElementById('claim-whatsapp');
   const btnClaimSubmit     = document.getElementById('btn-claim-submit');
   const premioGanadoTexto  = document.getElementById('premio-ganado-texto');
@@ -103,10 +113,54 @@
   // ---- Aplicar config de campaña a la UI ----
   document.title = config.biz + ' — Ruleta de Premios';
   bizTitle.textContent = '¡Jugá y Ganá en ' + config.biz + '!';
-  claimPreguntaLabel.textContent = config.q;
   document.documentElement.style.setProperty('--bg', config.colors.bg);
   document.documentElement.style.setProperty('--cyan', config.colors.p);
   document.documentElement.style.setProperty('--amber', config.colors.a);
+
+  // Hasta 2 preguntas opcionales (config.q, 0 a 2 elementos) — se renderiza
+  // un campo por cada una, ninguno obligatorio.
+  function renderPreguntasFields(){
+    config.q.forEach(function(q, idx){
+      const field = document.createElement('div');
+      field.className = 'field';
+
+      const label = document.createElement('label');
+      label.setAttribute('for', 'claim-pregunta-' + idx);
+      label.textContent = q;
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = 'claim-pregunta-' + idx;
+      input.dataset.index = String(idx);
+      input.dataset.pregunta = q;
+
+      field.appendChild(label);
+      field.appendChild(input);
+      claimPreguntasContainer.appendChild(field);
+    });
+  }
+  renderPreguntasFields();
+
+  // Junta las preguntas que el visitante efectivamente respondió (deja en
+  // blanco las que no contestó, no son obligatorias), conservando el número
+  // de pregunta original (P1/P2) según el orden configurado, no el orden
+  // de respuesta.
+  function collectAnsweredPairs(){
+    const inputs = claimPreguntasContainer.querySelectorAll('input[data-pregunta]');
+    const pairs = [];
+    inputs.forEach(function(input){
+      const respuesta = input.value.trim();
+      if (respuesta) pairs.push({ index: parseInt(input.dataset.index, 10), pregunta: input.dataset.pregunta, respuesta: respuesta });
+    });
+    return pairs;
+  }
+
+  function buildPreguntaRespuestaPayload(pairs){
+    return {
+      pregunta: pairs.map(function(p){ return 'P' + (p.index + 1) + ': ' + p.pregunta; }).join(' | '),
+      respuesta: pairs.map(function(p){ return 'R' + (p.index + 1) + ': ' + p.respuesta; }).join(' | ')
+    };
+  }
 
   logoImg.addEventListener('error', function(){
     logoImg.style.display = 'none';
@@ -195,8 +249,9 @@
       nombre: '',
       whatsapp: '',
       premio: premio,
-      pregunta: config.q,
+      pregunta: config.q.map(function(q, i){ return 'P' + (i + 1) + ': ' + q; }).join(' | '),
       respuesta: '',
+      session_id: state.sessionId,
       observaciones: 'Jugó - Pendiente de datos'
     });
   }
@@ -233,8 +288,12 @@
     unlockAudio();
 
     state.nombre = claimNombre.value.trim();
-    state.respuestaPregunta = claimPregunta.value.trim();
+    state.answeredPairs = collectAnsweredPairs();
     state.whatsapp = claimWhatsapp.value.trim();
+
+    const pr = buildPreguntaRespuestaPayload(state.answeredPairs);
+    state.preguntaCampo = pr.pregunta;
+    state.respuestaCampo = pr.respuesta;
 
     premioTexto.textContent = 'Ganaste: ' + config.prizes[state.winningPrizeIndex].l;
 
@@ -245,8 +304,9 @@
       nombre: state.nombre,
       whatsapp: window.ARFLOW.crm.formatWhatsapp(state.whatsapp),
       premio: config.prizes[state.winningPrizeIndex].l,
-      pregunta: config.q,
-      respuesta: state.respuestaPregunta,
+      pregunta: state.preguntaCampo,
+      respuesta: state.respuestaCampo,
+      session_id: state.sessionId,
       observaciones: 'Premio Ganado'
     });
 
@@ -263,14 +323,21 @@
       nombre: state.nombre,
       whatsapp: window.ARFLOW.crm.formatWhatsapp(state.whatsapp),
       premio: premio,
-      pregunta: config.q,
-      respuesta: state.respuestaPregunta,
+      pregunta: state.preguntaCampo,
+      respuesta: state.respuestaCampo,
+      session_id: state.sessionId,
       observaciones: 'Premio Reclamado'
     });
 
-    const detalle = state.respuestaPregunta ? ' (' + state.respuestaPregunta + ')' : '';
-    const msg = '¡Hola! Mi nombre es ' + state.nombre + ', acabo de jugar en ' + config.biz +
-      ' y gané un ' + premio + detalle + '. Quiero validarlo ahora.';
+    // Mensaje prolijo y personalizado: un bloque 💬/➡️ por cada pregunta que
+    // el visitante efectivamente respondió (las que dejó en blanco no
+    // aparecen), en vez de la respuesta pegada entre paréntesis.
+    let msg = '¡Hola! 👋 Soy ' + state.nombre + ', jugué en ' + config.biz + ' y gané *' + premio + '* 🎉';
+    state.answeredPairs.forEach(function(p){
+      msg += '\n\n💬 ' + p.pregunta + '\n➡️ ' + p.respuesta;
+    });
+    msg += '\n\nQuiero validar mi premio, ¿me ayudás? 😊';
+
     const url = 'https://wa.me/' + config.wa + '?text=' + encodeURIComponent(msg);
     window.open(url, '_blank');
   });

@@ -1,10 +1,12 @@
 require('dotenv').config();
 
 const path = require('path');
+const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
 const sharp = require('sharp');
 const { z } = require('zod');
+const { Redis } = require('@upstash/redis');
 
 const AnthropicSDK = require('@anthropic-ai/sdk');
 const Anthropic = AnthropicSDK.default || AnthropicSDK;
@@ -15,6 +17,75 @@ const ROOT = __dirname;
 
 const app = express();
 app.use(express.static(ROOT));
+app.use(express.json());
+
+// ================= Shortlinks (link + QR cortos, con atribución de canal) =================
+// Cada campaña genera dos URLs largas idénticas salvo el query param `canal`
+// (link vs qr). Guardamos cada una bajo un código corto en Upstash Redis
+// (REST, sin conexión TCP persistente) para que el link a compartir y el QR
+// sean cortos y estables, sin depender del disco de Render (que no es
+// persistente entre reinicios del free tier).
+const SHORT_CODE_BYTES = 5; // ~7 caracteres en base62, suficiente para no colisionar en el volumen de este proyecto
+const BASE62 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+function randomShortCode() {
+  const bytes = crypto.randomBytes(SHORT_CODE_BYTES);
+  let code = '';
+  for (let i = 0; i < bytes.length; i++) code += BASE62[bytes[i] % BASE62.length];
+  return code;
+}
+
+let redisClient = null;
+function getRedisClient() {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) return null;
+  if (!redisClient) {
+    redisClient = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+  return redisClient;
+}
+
+app.post('/api/shorten', async function (req, res) {
+  const redis = getRedisClient();
+  if (!redis) {
+    return res.status(500).json({ error: 'El servidor no tiene configurado el shortlink (faltan las variables de entorno de Upstash Redis).' });
+  }
+
+  const longUrl = req.body && req.body.longUrl;
+  if (!longUrl || typeof longUrl !== 'string') {
+    return res.status(400).json({ error: 'Falta longUrl.' });
+  }
+
+  try {
+    let code = randomShortCode();
+    // Colisión extremadamente improbable con 5 bytes random, pero se verifica igual.
+    for (let attempts = 0; attempts < 5 && (await redis.get('short:' + code)) !== null; attempts++) {
+      code = randomShortCode();
+    }
+    await redis.set('short:' + code, longUrl);
+    const shortUrl = req.protocol + '://' + req.get('host') + '/s/' + code;
+    res.json({ shortUrl: shortUrl });
+  } catch (err) {
+    console.error('[shorten] error de Redis:', err);
+    res.status(502).json({ error: 'No se pudo generar el link corto. Intentá de nuevo en un momento.' });
+  }
+});
+
+app.get('/s/:code', async function (req, res) {
+  const redis = getRedisClient();
+  if (!redis) return res.status(500).send('Shortlink no configurado en el servidor.');
+
+  try {
+    const longUrl = await redis.get('short:' + req.params.code);
+    if (!longUrl) return res.status(404).send('Este link no existe o venció.');
+    res.redirect(302, longUrl);
+  } catch (err) {
+    console.error('[shortlink redirect] error de Redis:', err);
+    res.status(502).send('No se pudo resolver el link. Intentá de nuevo en un momento.');
+  }
+});
 
 // ================= Subida de logo =================
 // El logo se embebe directo en el link/QR como data URI (en vez de guardarse
@@ -193,5 +264,8 @@ app.listen(PORT, function () {
   console.log('[AR FLOW] Servidor corriendo en http://localhost:' + PORT);
   if (!process.env.ANTHROPIC_API_KEY) {
     console.warn('[AR FLOW] Falta ANTHROPIC_API_KEY en .env — la extracción de documentos con IA no va a funcionar hasta que la configures.');
+  }
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    console.warn('[AR FLOW] Falta UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN en .env — el link corto y el QR del configurador no van a funcionar hasta que las configures.');
   }
 });

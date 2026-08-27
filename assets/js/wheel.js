@@ -2,12 +2,45 @@
   "use strict";
   window.ARFLOW = window.ARFLOW || {};
 
-  const SECTORS_PER_PRIZE = 3;
   const WHEEL_CX = 150, WHEEL_CY = 150, WHEEL_R = 145;
+
+  // Más premios → menos repeticiones de cada uno, para no triplicar la
+  // densidad angular (y volver el texto ilegible) cuando hay muchos premios.
+  function sectorsPerPrizeFor(prizeCount){
+    if (prizeCount <= 3) return 3;
+    if (prizeCount <= 5) return 2;
+    return 1;
+  }
 
   function polarToCartesian(cx, cy, r, angleDeg){
     const rad = (angleDeg - 90) * Math.PI / 180;
     return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+
+  // Achica el font-size (hasta minFont) para que el texto entre en maxWidth;
+  // si ni así entra, trunca con "…". Requiere que `text` ya esté en el DOM
+  // (getComputedTextLength necesita layout real).
+  function fitSectorText(text, label, maxWidth, maxFont, minFont){
+    text.textContent = label;
+    let fontSize = maxFont;
+    text.setAttribute('font-size', fontSize);
+    let width = text.getComputedTextLength();
+    let guard = 0;
+    while (width > maxWidth && fontSize > minFont && guard < 6){
+      fontSize = Math.max(minFont, fontSize * (maxWidth / width) * 0.95);
+      text.setAttribute('font-size', fontSize);
+      width = text.getComputedTextLength();
+      guard++;
+    }
+    if (width > maxWidth){
+      let truncated = label;
+      let safety = 0;
+      while (truncated.length > 2 && text.getComputedTextLength() > maxWidth && safety < 40){
+        truncated = truncated.slice(0, -1);
+        text.textContent = truncated.trim() + '…';
+        safety++;
+      }
+    }
   }
 
   // refs: { wheelGroup: <svg g>, btnGirar: <button> }
@@ -16,11 +49,19 @@
   function mount(refs, config, callbacks){
     const wheelGroup = refs.wheelGroup;
     const btnGirar = refs.btnGirar;
-    const sectorColors = [config.colors.bg, config.colors.p, config.colors.a];
+    // Sin colors.bg: ese color (casi negro por default) apagaba 1 de cada 3
+    // gajos cuando se usaba como relleno. Solo alternamos entre los dos
+    // colores de marca vivos.
+    const sectorColors = [config.colors.p, config.colors.a];
 
     function buildWheel(){
-      const totalSectors = config.prizes.length * SECTORS_PER_PRIZE;
+      const sectorsPerPrize = sectorsPerPrizeFor(config.prizes.length);
+      const totalSectors = config.prizes.length * sectorsPerPrize;
       const anglePerSector = 360 / totalSectors;
+      const angleRad = anglePerSector * Math.PI / 180;
+      const textRadius = WHEEL_R * 0.62;
+      const maxTextWidth = 2 * textRadius * Math.sin(angleRad / 2) * 0.85;
+      const baseFontSize = Math.max(7, Math.min(13, anglePerSector * 0.4));
 
       wheelGroup.innerHTML = '';
       wheelGroup.style.transformOrigin = WHEEL_CX + 'px ' + WHEEL_CY + 'px';
@@ -55,10 +96,10 @@
         text.setAttribute('transform', 'rotate(' + midAngle + ' ' + textPos.x + ' ' + textPos.y + ')');
         text.setAttribute('font-family', 'League Spartan, sans-serif');
         text.setAttribute('font-weight', '800');
-        text.setAttribute('font-size', '11');
-        text.setAttribute('fill', fill === config.colors.bg ? '#FFFFFF' : config.colors.bg);
-        text.textContent = config.prizes[i % config.prizes.length].l;
+        text.setAttribute('fill', window.ARFLOW.colors.contrastColor(fill));
         wheelGroup.appendChild(text);
+
+        fitSectorText(text, config.prizes[i % config.prizes.length].l, maxTextWidth, baseFontSize, 7);
       }
 
       return { totalSectors: totalSectors, anglePerSector: anglePerSector };

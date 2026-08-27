@@ -14,7 +14,7 @@
       { l: '50% de Descuento', w: 1 },
       { l: 'Gracias por participar', w: 6 }
     ],
-    q: '¿Qué te interesa?',
+    q: ['¿Qué te interesa?'],
     wa: '',
     hook: '',
     colors: DEFAULT_COLORS,
@@ -55,6 +55,18 @@
       if (cfg.prizes.length === 0) cfg.prizes = DEFAULT_CONFIG.prizes;
     }
     if (cfg.game !== 'wheel' && cfg.game !== 'scratch') cfg.game = 'wheel';
+    // Hasta 2 preguntas opcionales. Compatibilidad con links viejos donde
+    // `q` era un string único en vez de array.
+    if (typeof cfg.q === 'string'){
+      cfg.q = cfg.q.trim() ? [cfg.q.trim()] : [];
+    } else if (!Array.isArray(cfg.q)){
+      cfg.q = [];
+    } else {
+      cfg.q = cfg.q
+        .filter(function(q){ return typeof q === 'string' && q.trim() !== ''; })
+        .map(function(q){ return q.trim(); })
+        .slice(0, 2);
+    }
     return cfg;
   }
 

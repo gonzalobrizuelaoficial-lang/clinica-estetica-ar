@@ -85,7 +85,7 @@
   #game-wheel-container{ display:flex; flex-direction:column; align-items:center; gap:20px; }
   #wheel-wrap{
     position:relative;
-    width:min(84vw, 340px); height:min(84vw, 340px);
+    width:min(88vw, 400px); height:min(88vw, 400px);
   }
   #wheel-svg{
     width:100%; height:100%;
@@ -118,7 +118,7 @@
   #game-scratch-container{ display:flex; flex-direction:column; align-items:center; gap:18px; }
   #scratch-wrap{
     position:relative;
-    width:min(84vw, 340px); height:min(50vw, 200px);
+    width:min(88vw, 400px); height:min(52vw, 220px);
     border-radius:20px; overflow:hidden;
     box-shadow: 0 10px 30px rgba(0,0,0,.5);
   }
@@ -194,8 +194,8 @@
 
   @media (max-height: 560px){
     .glass-panel{ padding:20px 18px; }
-    #wheel-wrap{ width:min(70vw, 260px); height:min(70vw, 260px); }
-    #scratch-wrap{ height:min(42vw, 170px); }
+    #wheel-wrap{ width:min(76vw, 300px); height:min(76vw, 300px); }
+    #scratch-wrap{ height:min(46vw, 190px); }
   }
 </style>
 </head>
@@ -236,7 +236,7 @@
   </div>
 </div>
 
-<!-- ================= Fase claim-form: formulario final (nombre + pregunta clave + whatsapp) ================= -->
+<!-- ================= Fase claim-form: formulario final (nombre + hasta 2 preguntas opcionales + whatsapp) ================= -->
 <div id="phase-claim-form" class="phase phase-hidden">
   <div class="glass-panel">
     <p class="premio-text" id="premio-ganado-texto">Ganaste un premio.</p>
@@ -246,10 +246,7 @@
         <label for="claim-nombre">Nombre</label>
         <input id="claim-nombre" name="nombre" type="text" autocomplete="name" required>
       </div>
-      <div class="field">
-        <label for="claim-pregunta" id="claim-pregunta-label">Contanos más</label>
-        <input id="claim-pregunta" name="pregunta" type="text" required>
-      </div>
+      <div id="claim-preguntas-container"></div>
       <div class="field">
         <label for="claim-whatsapp">WhatsApp</label>
         <input id="claim-whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" required>
@@ -270,6 +267,7 @@
 
 <script src="assets/js/weighted-random.js"></script>
 <script src="assets/js/config.js"></script>
+<script src="assets/js/colors.js"></script>
 <script src="assets/js/crm.js"></script>
 <script src="assets/js/wheel.js"></script>
 <script src="assets/js/scratch.js"></script>

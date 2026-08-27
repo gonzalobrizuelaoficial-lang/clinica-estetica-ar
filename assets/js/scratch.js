@@ -6,6 +6,26 @@
   const BRUSH_RADIUS = 22;
   const CHECK_THROTTLE_MS = 150;   // no medir progreso en cada pointermove: getImageData es costoso
   const SAMPLE_STRIDE = 20;        // muestrea 1 de cada N píxeles al medir progreso, no todos
+  const LABEL_MAX_FONT = 20, LABEL_MIN_FONT = 12;
+
+  // Achica el font-size del label (hasta LABEL_MIN_FONT) para que el premio
+  // entre en el ancho disponible, en vez de quedar cortado por el
+  // overflow:hidden del contenedor con premios de texto largo.
+  const measureCanvas = document.createElement('canvas');
+  const measureCtx = measureCanvas.getContext('2d');
+  function fitLabelFont(el){
+    const maxWidth = el.clientWidth - 32; // descuenta el padding:0 16px del CSS
+    if (maxWidth <= 0) return;
+    let fontSize = LABEL_MAX_FONT;
+    measureCtx.font = '800 ' + fontSize + 'px "League Spartan", sans-serif';
+    let width = measureCtx.measureText(el.textContent).width;
+    while (width > maxWidth && fontSize > LABEL_MIN_FONT){
+      fontSize -= 1;
+      measureCtx.font = '800 ' + fontSize + 'px "League Spartan", sans-serif';
+      width = measureCtx.measureText(el.textContent).width;
+    }
+    el.style.fontSize = fontSize + 'px';
+  }
 
   // refs: { canvas: <canvas>, prizeLabel: <div>, btnReveal: <button> opcional }
   // config: config de campaña normalizada (config.prizes, config.colors)
@@ -18,6 +38,11 @@
 
     const winningPrizeIndex = window.ARFLOW.pickWeightedIndex(config.prizes);
     prizeLabel.textContent = config.prizes[winningPrizeIndex].l;
+    // Antes era siempre var(--cyan) fijo, sin garantía de contraste; ahora
+    // preferimos el color de marca principal, pero solo si se lee bien
+    // contra el fondo — si no, caemos a blanco/negro de contraste seguro.
+    prizeLabel.style.color = window.ARFLOW.colors.pickReadableColor(config.colors.bg, config.colors.p);
+    fitLabelFont(prizeLabel);
 
     function drawCover(){
       const rect = canvas.getBoundingClientRect();
@@ -43,6 +68,7 @@
       canvas.height = Math.round(rect.height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       drawCover();
+      fitLabelFont(prizeLabel);
     }
 
     canvas.style.touchAction = 'none'; // evita scroll/drag del navegador durante el raspado
