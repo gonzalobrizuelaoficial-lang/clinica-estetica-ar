@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configurador de Campañas — AR FLOW</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@700;800&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #0A0A0A;
+    --panel: #141414;
+    --cyan: #00E5FF;
+    --amber: #F5A623;
+    --text: #F2F5F5;
+    --muted: #9AA3A3;
+    --danger: #FF6B6B;
+    --ok: #3DDC84;
+  }
+  *{ box-sizing:border-box; }
+  html, body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:'Montserrat', sans-serif; }
+  h1, h2, h3{ font-family:'League Spartan', sans-serif; margin:0 0 4px; }
+  .wrap{ max-width:760px; margin:0 auto; padding:32px 20px 80px; }
+  header{ margin-bottom:28px; }
+  header h1{ font-size:1.5rem; font-weight:800; }
+  header p{ color:var(--muted); margin:6px 0 0; font-size:.9rem; }
+
+  section.card{
+    background:var(--panel); border:1px solid rgba(255,255,255,.08);
+    border-radius:16px; padding:22px 20px; margin-bottom:20px;
+  }
+  section.card h2{ font-size:1rem; font-weight:800; margin-bottom:14px; color:var(--cyan); }
+
+  label{ display:block; font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; font-weight:600; margin:0 0 6px; }
+  .field{ margin-bottom:16px; }
+  input[type=text], input[type=tel], input[type=url], input[type=number], select, textarea{
+    width:100%; padding:11px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.16);
+    background:rgba(0,0,0,.35); color:var(--text); font-size:.92rem; font-family:inherit;
+  }
+  input:focus, select:focus{ outline:none; border-color:var(--cyan); }
+  .hint{ font-size:.72rem; color:var(--muted); margin-top:5px; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:520px){ .row2{ grid-template-columns:1fr; } }
+
+  .prize-row{ display:grid; grid-template-columns:1fr 90px 70px 32px; gap:8px; align-items:center; margin-bottom:8px; }
+  .prize-row .pct{ font-size:.78rem; color:var(--cyan); font-weight:700; text-align:right; }
+  .prize-row button{ background:transparent; border:1px solid rgba(255,107,107,.4); color:var(--danger); border-radius:8px; height:38px; cursor:pointer; }
+  #btn-add-prize{
+    background:transparent; border:1px dashed rgba(255,255,255,.3); color:var(--muted);
+    padding:9px 14px; border-radius:10px; font-family:inherit; font-size:.82rem; cursor:pointer; margin-top:6px;
+  }
+  #prizes-total-hint{ font-size:.75rem; color:var(--muted); margin-top:8px; }
+
+  .colors-row{ display:flex; gap:16px; flex-wrap:wrap; }
+  .color-field{ display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
+  .color-field input[type=color]{ width:56px; height:36px; padding:2px; border-radius:8px; border:1px solid rgba(255,255,255,.16); background:transparent; }
+
+  .file-field{ margin-top:10px; }
+  .file-field input[type=file]{ display:block; font-family:inherit; font-size:.8rem; color:var(--muted); margin-bottom:8px; }
+  .logo-preview-row{ display:flex; align-items:center; gap:12px; }
+  #logo-preview{ width:48px; height:48px; object-fit:contain; border-radius:8px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); display:none; }
+  .palette-row{ display:none; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .palette-swatch{ width:26px; height:26px; border-radius:6px; border:1px solid rgba(255,255,255,.25); display:inline-block; }
+  .btn-secondary{
+    background:transparent; border:1px solid rgba(0,229,255,.4); color:var(--cyan);
+    padding:9px 14px; border-radius:10px; font-family:inherit; font-size:.82rem; cursor:pointer; margin-top:2px;
+  }
+  .btn-secondary:disabled{ opacity:.5; cursor:default; }
+  .status-msg{ font-size:.78rem; color:var(--muted); margin-top:8px; min-height:1em; }
+  .status-msg.ok{ color:var(--ok); }
+  .status-msg.error{ color:var(--danger); }
+
+  .local-warning{ display:none; background:rgba(255,107,107,.12); border:1px solid var(--danger); color:var(--danger); font-weight:600; padding:10px 14px; border-radius:10px; margin-bottom:20px; font-size:.85rem; }
+  .local-warning.visible{ display:block; }
+
+  #btn-generar{
+    width:100%; padding:15px 14px; border:none; border-radius:14px; margin-top:6px;
+    background:var(--amber); color:#1A1200; font-weight:800; font-size:1rem; font-family:inherit; cursor:pointer;
+  }
+  #btn-generar:active{ transform:scale(.99); }
+
+  #output{ display:none; }
+  #output.visible{ display:block; }
+  .link-row{ display:flex; gap:8px; }
+  .link-row input{ flex:1; }
+  .link-row button, .qr-actions button{
+    padding:11px 16px; border-radius:10px; border:1px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.06); color:var(--text); font-family:inherit; font-size:.85rem; cursor:pointer;
+  }
+  #url-len-warning{ display:none; color:var(--amber); font-size:.78rem; margin-top:8px; }
+  #url-len-warning.visible{ display:block; }
+
+  #qr-canvas-wrap{ display:flex; justify-content:center; margin:18px 0; }
+  #qr-canvas-wrap canvas{ border-radius:12px; background:#fff; padding:10px; }
+  .qr-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+
+  .copied-flag{ color:var(--ok); font-size:.78rem; margin-left:8px; display:none; }
+  .copied-flag.visible{ display:inline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Configurador de Campañas</h1>
+    <p>Armá una campaña (juego + premios + canal) y generá su link y QR. No hace falta tocar código ni redeployar nada.</p>
+  </header>
+
+  <p id="local-link-warning" class="local-warning">⚠️ Estás usando el configurador desde tu PC (localhost / archivo local). El link que generes acá SOLO va a funcionar en esta máquina — no lo compartas ni lo imprimas en un QR. Abrí la versión publicada (Render) y generá el link desde ahí.</p>
+
+  <section class="card">
+    <h2>1. Negocio</h2>
+    <div class="field">
+      <label for="f-biz">Nombre del negocio</label>
+      <input id="f-biz" type="text" placeholder="Ej. Clínica Bella" required>
+    </div>
+
+    <div class="field file-field">
+      <label for="f-doc">Documento del negocio (opcional) — PDF, .md o .txt</label>
+      <p class="hint">Subí un documento con info del negocio y la IA completa por vos los campos que estén vacíos. Nunca pisa lo que ya escribiste.</p>
+      <input id="f-doc" type="file" accept=".pdf,.md,.txt,application/pdf,text/markdown,text/plain">
+      <button id="btn-extraer-doc" type="button" class="btn-secondary">Extraer datos con IA</button>
+      <p id="doc-status" class="status-msg"></p>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="f-rubro">Rubro (informativo, no cambia el comportamiento)</label>
+        <input id="f-rubro" type="text" placeholder="Ej. clínica estética, gimnasio, heladería...">
+      </div>
+      <div class="field">
+        <label for="f-logo">Logo</label>
+        <input id="f-logo" type="text" placeholder="Se completa solo al subir un archivo abajo (o pegá manualmente una URL/data URI corta)">
+        <div class="file-field">
+          <input id="f-logo-file" type="file" accept="image/png,image/jpeg">
+          <div class="logo-preview-row">
+            <img id="logo-preview" alt="Vista previa del logo">
+          </div>
+          <p id="logo-upload-status" class="status-msg"></p>
+          <div id="palette-suggestions" class="palette-row"></div>
+        </div>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="f-wa">WhatsApp del negocio</label>
+        <input id="f-wa" type="tel" placeholder="549AAAXXXXXXX">
+      </div>
+      <div class="field">
+        <label for="f-hook">Webhook de Make de este cliente</label>
+        <input id="f-hook" type="url" placeholder="https://hook.us2.make.com/...">
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2. Juego</h2>
+    <div class="field">
+      <label for="f-game">Tipo de interactividad</label>
+      <select id="f-game">
+        <option value="wheel">Ruleta</option>
+        <option value="scratch">Raspadita</option>
+      </select>
+    </div>
+
+    <label>Premios (con peso de probabilidad)</label>
+    <div id="prizes-list"></div>
+    <button id="btn-add-prize" type="button">+ Agregar premio</button>
+    <p id="prizes-total-hint"></p>
+  </section>
+
+  <section class="card">
+    <h2>3. Pregunta clave del formulario final</h2>
+    <div class="field">
+      <label for="f-q">Se le pregunta al ganador antes de reclamar el premio por WhatsApp</label>
+      <input id="f-q" type="text" placeholder="Ej. ¿Qué tratamiento te interesa?">
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>4. Colores de marca</h2>
+    <div class="colors-row">
+      <div class="color-field"><label for="f-color-bg">Fondo</label><input id="f-color-bg" type="color" value="#0A0A0A"></div>
+      <div class="color-field"><label for="f-color-p">Principal</label><input id="f-color-p" type="color" value="#00E5FF"></div>
+      <div class="color-field"><label for="f-color-a">Acento</label><input id="f-color-a" type="color" value="#F5A623"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>5. Canal de distribución</h2>
+    <div class="field">
+      <label for="f-canal">Canal por defecto para este link</label>
+      <select id="f-canal">
+        <option value="qr_local">QR en el local físico</option>
+        <option value="reel">Reel de Instagram</option>
+        <option value="historia">Historia de Instagram</option>
+        <option value="otro">Otro (especificar)</option>
+      </select>
+    </div>
+    <div class="field" id="canal-otro-wrap" style="display:none;">
+      <label for="f-canal-otro">Nombre del canal</label>
+      <input id="f-canal-otro" type="text" placeholder="Ej. flyer_local">
+    </div>
+    <p class="hint">Para el mismo negocio en otro canal, no hace falta rehacer todo el formulario: generá el link, después volvé a esta sección, cambiá el canal y volvé a tocar "Generar link y QR" — la config del negocio/juego/premios queda igual.</p>
+  </section>
+
+  <button id="btn-generar" type="button">Generar link y QR</button>
+
+  <section class="card" id="output">
+    <h2>Campaña generada</h2>
+    <div class="link-row">
+      <input id="out-link" type="text" readonly>
+      <button id="btn-copiar" type="button">Copiar</button>
+    </div>
+    <span class="copied-flag" id="copied-flag">¡Copiado!</span>
+    <p id="url-len-warning">El link es largo — probá el QR con un lector real antes de imprimirlo, sobre todo en tamaño chico.</p>
+    <p id="url-len-error" class="status-msg error"></p>
+
+    <div id="qr-canvas-wrap"><canvas id="qr-canvas"></canvas></div>
+    <div class="qr-actions">
+      <button id="btn-qr-png" type="button">Descargar QR (PNG)</button>
+      <button id="btn-qr-svg" type="button">Descargar QR (SVG)</button>
+    </div>
+  </section>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/vendor/qrcode.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  const isLocalConfigurador = location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  if (isLocalConfigurador) {
+    document.getElementById('local-link-warning').classList.add('visible');
+  }
+
+  const prizesList = document.getElementById('prizes-list');
+  const prizesTotalHint = document.getElementById('prizes-total-hint');
+  const btnAddPrize = document.getElementById('btn-add-prize');
+
+  function addPrizeRow(label, weight){
+    const row = document.createElement('div');
+    row.className = 'prize-row';
+    row.innerHTML =
+      '<input type="text" class="prize-label" placeholder="Texto del premio" value="' + (label || '').replace(/"/g, '&quot;') + '">' +
+      '<input type="number" class="prize-weight" min="1" step="1" value="' + (weight || 1) + '">' +
+      '<span class="pct">0%</span>' +
+      '<button type="button" aria-label="Quitar premio">✕</button>';
+    row.querySelector('button').addEventListener('click', function(){
+      row.remove();
+      recalcPercentages();
+    });
+    row.querySelector('.prize-label').addEventListener('input', recalcPercentages);
+    row.querySelector('.prize-weight').addEventListener('input', recalcPercentages);
+    prizesList.appendChild(row);
+    recalcPercentages();
+  }
+
+  function getPrizeRows(){
+    return Array.prototype.map.call(prizesList.querySelectorAll('.prize-row'), function(row){
+      return {
+        l: row.querySelector('.prize-label').value.trim(),
+        w: Math.max(1, parseInt(row.querySelector('.prize-weight').value, 10) || 1),
+        pctEl: row.querySelector('.pct')
+      };
+    });
+  }
+
+  function recalcPercentages(){
+    const rows = getPrizeRows();
+    const total = rows.reduce(function(sum, p){ return sum + p.w; }, 0) || 1;
+    rows.forEach(function(p){
+      p.pctEl.textContent = Math.round((p.w / total) * 100) + '%';
+    });
+    prizesTotalHint.textContent = rows.length + ' premio(s) — la probabilidad se recalcula en vivo según el peso de cada uno.';
+  }
+
+  btnAddPrize.addEventListener('click', function(){ addPrizeRow('', 1); });
+
+  // Precarga con 2 premios de ejemplo, editables.
+  addPrizeRow('25% de Descuento', 3);
+  addPrizeRow('50% de Descuento', 1);
+
+  // ---- Canal "otro" ----
+  const fCanal = document.getElementById('f-canal');
+  const canalOtroWrap = document.getElementById('canal-otro-wrap');
+  const fCanalOtro = document.getElementById('f-canal-otro');
+  fCanal.addEventListener('change', function(){
+    canalOtroWrap.style.display = fCanal.value === 'otro' ? '' : 'none';
+  });
+
+  // ---- Generar link + QR ----
+  const outputSection = document.getElementById('output');
+  const outLink = document.getElementById('out-link');
+  const urlLenWarning = document.getElementById('url-len-warning');
+  const urlLenError = document.getElementById('url-len-error');
+  const qrCanvas = document.getElementById('qr-canvas');
+  const QR_HARD_LIMIT = 2200; // margen de seguridad bajo el límite real de una QR nivel M (~2331 bytes)
+  let lastUrl = '';
+
+  document.getElementById('btn-generar').addEventListener('click', function(){
+    const prizes = getPrizeRows()
+      .filter(function(p){ return p.l !== ''; })
+      .map(function(p){ return { l: p.l, w: p.w }; });
+
+    if (prizes.length === 0){
+      alert('Agregá al menos un premio con texto.');
+      return;
+    }
+
+    const canal = fCanal.value === 'otro' ? (fCanalOtro.value.trim() || 'otro') : fCanal.value;
+
+    const cfg = {
+      v: 1,
+      biz: document.getElementById('f-biz').value.trim() || 'Tu Negocio',
+      rubro: document.getElementById('f-rubro').value.trim(),
+      game: document.getElementById('f-game').value,
+      prizes: prizes,
+      q: document.getElementById('f-q').value.trim() || '¿Qué te interesa?',
+      wa: document.getElementById('f-wa').value.replace(/\D/g, ''),
+      hook: document.getElementById('f-hook').value.trim(),
+      colors: {
+        bg: document.getElementById('f-color-bg').value,
+        p: document.getElementById('f-color-p').value,
+        a: document.getElementById('f-color-a').value
+      },
+      logo: document.getElementById('f-logo').value.trim() || 'assets/logo.png'
+    };
+
+    const encoded = window.ARFLOW.config.encodeConfig(cfg);
+    const base = new URL('index.html', window.location.href);
+    base.searchParams.set('cfg', encoded);
+    base.searchParams.set('canal', canal);
+    lastUrl = base.href;
+
+    outLink.value = lastUrl;
+    urlLenWarning.classList.toggle('visible', lastUrl.length > 1200);
+    outputSection.classList.add('visible');
+
+    if (lastUrl.length > QR_HARD_LIMIT){
+      urlLenError.textContent = 'El link quedó demasiado largo (' + lastUrl.length + ' caracteres) y no entra en un QR. Achicá el logo, la pregunta, el webhook o la cantidad de premios, y volvé a generar.';
+      qrCanvas.getContext('2d').clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+    } else {
+      urlLenError.textContent = '';
+      window.QRCode.toCanvas(qrCanvas, lastUrl, { width: 320, margin: 2, errorCorrectionLevel: 'M' }, function(err){
+        if (err){
+          console.error('[QR] No se pudo generar el QR:', err);
+          urlLenError.textContent = 'No se pudo generar el QR para este link. Achicá el logo, la pregunta o los premios y volvé a intentar.';
+        }
+      });
+    }
+
+    outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  // ---- Copiar link ----
+  const copiedFlag = document.getElementById('copied-flag');
+  document.getElementById('btn-copiar').addEventListener('click', function(){
+    if (!lastUrl) return;
+    navigator.clipboard.writeText(lastUrl).then(function(){
+      copiedFlag.classList.add('visible');
+      setTimeout(function(){ copiedFlag.classList.remove('visible'); }, 1800);
+    }).catch(function(){
+      outLink.select();
+      document.execCommand('copy');
+    });
+  });
+
+  // ---- Descargar QR ----
+  document.getElementById('btn-qr-png').addEventListener('click', function(){
+    if (!lastUrl) return;
+    qrCanvas.toBlob(function(blob){
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'qr-campana.png';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+  });
+
+  document.getElementById('btn-qr-svg').addEventListener('click', function(){
+    if (!lastUrl) return;
+    window.QRCode.toString(lastUrl, { type: 'svg', margin: 2, errorCorrectionLevel: 'M' }, function(err, svg){
+      if (err){ console.error('[QR] No se pudo generar el SVG:', err); return; }
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'qr-campana.svg';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+  });
+
+  // ---- Subida de logo + paleta de colores sugerida ----
+  const fLogoFile = document.getElementById('f-logo-file');
+  const fLogo = document.getElementById('f-logo');
+  const logoPreview = document.getElementById('logo-preview');
+  const logoUploadStatus = document.getElementById('logo-upload-status');
+  const paletteRow = document.getElementById('palette-suggestions');
+  const LOGO_MAX_BYTES = 2 * 1024 * 1024;
+
+  function setStatus(el, msg, kind){
+    el.textContent = msg;
+    el.classList.remove('ok', 'error');
+    if (kind) el.classList.add(kind);
+  }
+
+  function extractPalette(imgEl, maxColors){
+    const size = 48;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(imgEl, 0, 0, size, size);
+    let data;
+    try {
+      data = ctx.getImageData(0, 0, size, size).data;
+    } catch (e){
+      return [];
+    }
+    const buckets = {};
+    for (let i = 0; i < data.length; i += 4){
+      const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+      if (a < 128) continue;
+      if (r > 235 && g > 235 && b > 235) continue;
+      if (r < 20 && g < 20 && b < 20) continue;
+      const key = [Math.round(r / 24) * 24, Math.round(g / 24) * 24, Math.round(b / 24) * 24].join(',');
+      buckets[key] = (buckets[key] || 0) + 1;
+    }
+    const entries = Object.keys(buckets).map(function(key){
+      const parts = key.split(',').map(Number);
+      const r = parts[0], g = parts[1], b = parts[2];
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const sat = max === 0 ? 0 : (max - min) / max;
+      return { r: r, g: g, b: b, count: buckets[key], sat: sat };
+    });
+    entries.sort(function(a, b){ return b.count - a.count; });
+    const topFrequent = entries.slice(0, 10);
+    topFrequent.sort(function(a, b){ return b.sat - a.sat; });
+    return topFrequent.slice(0, maxColors).map(function(e){
+      return '#' + [e.r, e.g, e.b].map(function(v){ return v.toString(16).padStart(2, '0'); }).join('');
+    });
+  }
+
+  function renderPaletteSuggestions(colors){
+    paletteRow.innerHTML = '';
+    if (!colors.length){ paletteRow.style.display = 'none'; return; }
+    colors.forEach(function(hex){
+      const sw = document.createElement('span');
+      sw.className = 'palette-swatch';
+      sw.style.background = hex;
+      sw.title = hex;
+      paletteRow.appendChild(sw);
+    });
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-secondary';
+    btn.textContent = 'Usar esta paleta (Principal/Acento)';
+    btn.addEventListener('click', function(){
+      if (colors[0]) document.getElementById('f-color-p').value = colors[0];
+      if (colors[1]) document.getElementById('f-color-a').value = colors[1];
+    });
+    paletteRow.appendChild(btn);
+    paletteRow.style.display = 'flex';
+  }
+
+  fLogoFile.addEventListener('change', function(){
+    const file = fLogoFile.files[0];
+    if (!file) return;
+
+    if (file.type !== 'image/png' && file.type !== 'image/jpeg'){
+      setStatus(logoUploadStatus, 'Formato no soportado. Elegí un PNG o JPG.', 'error');
+      fLogoFile.value = '';
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES){
+      setStatus(logoUploadStatus, 'El archivo pesa más de 2MB. Elegí uno más liviano.', 'error');
+      fLogoFile.value = '';
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    logoPreview.onload = function(){
+      renderPaletteSuggestions(extractPalette(logoPreview, 2));
+    };
+    logoPreview.src = objectUrl;
+    logoPreview.style.display = '';
+
+    setStatus(logoUploadStatus, 'Subiendo logo...', null);
+
+    const fd = new FormData();
+    fd.append('logo', file);
+    fd.append('biz', document.getElementById('f-biz').value.trim());
+
+    fetch('/api/upload-logo', { method: 'POST', body: fd })
+      .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+      .then(function(res){
+        if (!res.ok){
+          setStatus(logoUploadStatus, res.data.error || 'No se pudo subir el logo.', 'error');
+          return;
+        }
+        fLogo.value = res.data.dataUrl;
+        const kb = Math.round(res.data.dataUrl.length / 1024 * 10) / 10;
+        setStatus(logoUploadStatus, 'Logo subido y listo (' + kb + ' KB en el link).', 'ok');
+      })
+      .catch(function(){
+        setStatus(logoUploadStatus, 'No se pudo conectar con el servidor. ¿Está corriendo "node server.js"?', 'error');
+      });
+  });
+
+  // ---- Documento del negocio: extracción de datos con IA ----
+  const fDoc = document.getElementById('f-doc');
+  const btnExtraerDoc = document.getElementById('btn-extraer-doc');
+  const docStatus = document.getElementById('doc-status');
+  const DOC_ALLOWED_EXT = ['.pdf', '.md', '.txt'];
+  const DOC_MAX_BYTES = 8 * 1024 * 1024;
+
+  function applyExtractedInfo(info){
+    const filled = [];
+    const fieldMap = [
+      ['biz', 'f-biz', 'nombre del negocio'],
+      ['rubro', 'f-rubro', 'rubro'],
+      ['q', 'f-q', 'pregunta clave'],
+      ['wa', 'f-wa', 'WhatsApp']
+    ];
+    fieldMap.forEach(function(entry){
+      const value = info[entry[0]];
+      const el = document.getElementById(entry[1]);
+      if (value && !el.value.trim()){
+        el.value = value;
+        filled.push(entry[2]);
+      }
+    });
+    if (info.prizes && info.prizes.length){
+      filled.push('sugerencia de premios: "' + info.prizes.join('", "') + '" (revisalos y cargalos a mano en la sección 2)');
+    }
+    if (info.colors && (info.colors.bg || info.colors.p || info.colors.a)){
+      filled.push('el documento menciona colores de marca (revisalos y cargalos a mano en la sección 4)');
+    }
+    if (filled.length){
+      setStatus(docStatus, 'Completado: ' + filled.join('; ') + '.', 'ok');
+    } else {
+      setStatus(docStatus, 'El documento no tenía datos nuevos para completar.', null);
+    }
+  }
+
+  btnExtraerDoc.addEventListener('click', function(){
+    const file = fDoc.files[0];
+    if (!file){
+      setStatus(docStatus, 'Elegí primero un archivo PDF, .md o .txt.', 'error');
+      return;
+    }
+    const nameParts = file.name.split('.');
+    const ext = '.' + nameParts[nameParts.length - 1].toLowerCase();
+    if (DOC_ALLOWED_EXT.indexOf(ext) === -1){
+      setStatus(docStatus, 'Formato no soportado. Subí un PDF, .md o .txt.', 'error');
+      return;
+    }
+    if (file.size > DOC_MAX_BYTES){
+      setStatus(docStatus, 'El documento pesa más de 8MB. Probá con uno más liviano.', 'error');
+      return;
+    }
+
+    setStatus(docStatus, 'Analizando documento con IA...', null);
+    btnExtraerDoc.disabled = true;
+
+    const fd = new FormData();
+    fd.append('doc', file);
+
+    fetch('/api/extract-business-info', { method: 'POST', body: fd })
+      .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+      .then(function(res){
+        btnExtraerDoc.disabled = false;
+        if (!res.ok){
+          setStatus(docStatus, res.data.error || 'No se pudo leer el documento.', 'error');
+          return;
+        }
+        applyExtractedInfo(res.data);
+      })
+      .catch(function(){
+        btnExtraerDoc.disabled = false;
+        setStatus(docStatus, 'No se pudo conectar con el servidor. ¿Está corriendo "node server.js"?', 'error');
+      });
+  });
+})();
+</script>
+</body>
+</html>

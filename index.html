@@ -67,47 +67,22 @@
     box-shadow: 0 20px 60px rgba(0,0,0,.45);
   }
 
-  /* ================= Fase 2: formulario ================= */
-  #logo-img{
-    max-width:140px; max-height:80px; object-fit:contain;
-    margin: 0 auto 14px; display:block;
+  /* ================= Fase "game": encabezado (logo + nombre del negocio) ================= */
+  #phase-game{ flex-direction:column; gap:24px; }
+  #phase-game #logo-img{
+    max-width:120px; max-height:70px; object-fit:contain;
+    margin:0 auto; display:block;
   }
-  #logo-fallback{
-    display:none; font-size:2rem; margin:0 auto 14px;
+  #phase-game #logo-fallback{
+    display:none; font-size:1.8rem; margin:0 auto;
   }
-  #phase-form h1{
-    font-size:1.35rem; font-weight:800; margin:0 0 6px;
+  #biz-title{
+    font-size:1.15rem; font-weight:800; margin:0; text-align:center;
     color:var(--text);
   }
-  #phase-form h1 span{ color:var(--cyan); }
-  #phase-form p.sub{
-    font-size:.85rem; color:var(--muted); margin:0 0 22px;
-  }
-  #gate-form label{
-    display:block; text-align:left; font-size:.7rem; color:var(--muted);
-    margin:0 0 6px; text-transform:uppercase; letter-spacing:.06em; font-weight:600;
-  }
-  #gate-form .field{ margin-bottom:14px; }
-  #gate-form input{
-    width:100%; padding:13px 14px; border-radius:12px;
-    border:1px solid rgba(255,255,255,.16); background:rgba(0,0,0,.35);
-    color:var(--text); font-size:1rem; font-family:inherit;
-    min-height:46px;
-  }
-  #gate-form input:focus{ outline:none; border-color:var(--cyan); }
-  #btn-submit{
-    width:100%; margin-top:8px; padding:15px 14px; border:none; border-radius:14px;
-    min-height:48px;
-    background: var(--cyan); color:#04211a; font-weight:700; font-size:1rem;
-    font-family:inherit;
-    cursor:pointer;
-    transition: transform .12s ease, opacity .2s ease;
-  }
-  #btn-submit:active{ transform: scale(.97); }
-  #btn-submit:disabled{ opacity:.6; cursor:default; }
 
-  /* ================= Fase 3: ruleta ================= */
-  #phase-wheel{ flex-direction:column; gap:28px; }
+  /* ================= Juego: ruleta ================= */
+  #game-wheel-container{ display:flex; flex-direction:column; align-items:center; gap:20px; }
   #wheel-wrap{
     position:relative;
     width:min(84vw, 340px); height:min(84vw, 340px);
@@ -138,12 +113,65 @@
   }
   #btn-girar:active{ transform:translate(-50%,-50%) scale(.94); }
   #btn-girar:disabled{ opacity:.65; cursor:default; }
-  #phase-wheel h2{
-    font-size:1.15rem; font-weight:800; margin:0; text-align:center;
-    color:var(--text);
+
+  /* ================= Juego: raspadita ================= */
+  #game-scratch-container{ display:flex; flex-direction:column; align-items:center; gap:18px; }
+  #scratch-wrap{
+    position:relative;
+    width:min(84vw, 340px); height:min(50vw, 200px);
+    border-radius:20px; overflow:hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  }
+  #scratch-prize-label{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    text-align:center; padding:0 16px;
+    font-family:'League Spartan', sans-serif; font-weight:800; font-size:1.25rem;
+    color: var(--cyan);
+    background: rgba(255,255,255,.06);
+  }
+  #scratch-canvas{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    cursor:pointer;
+  }
+  #btn-reveal{
+    background:transparent; border:1px solid rgba(255,255,255,.3);
+    color: var(--muted); padding:10px 18px; border-radius:10px;
+    font-family:inherit; font-size:.8rem; cursor:pointer;
   }
 
-  /* ================= Fase 4: resultado ================= */
+  /* ================= Fase claim-form: formulario final ================= */
+  #claim-form label{
+    display:block; text-align:left; font-size:.7rem; color:var(--muted);
+    margin:0 0 6px; text-transform:uppercase; letter-spacing:.06em; font-weight:600;
+  }
+  #claim-form .field{ margin-bottom:14px; }
+  #claim-form input{
+    width:100%; padding:13px 14px; border-radius:12px;
+    border:1px solid rgba(255,255,255,.16); background:rgba(0,0,0,.35);
+    color:var(--text); font-size:1rem; font-family:inherit;
+    min-height:46px;
+  }
+  #claim-form input:focus{ outline:none; border-color:var(--cyan); }
+  #btn-claim-submit{
+    width:100%; margin-top:8px; padding:15px 14px; border:none; border-radius:14px;
+    min-height:48px;
+    background: var(--cyan); color:#04211a; font-weight:700; font-size:1rem;
+    font-family:inherit;
+    cursor:pointer;
+    transition: transform .12s ease, opacity .2s ease;
+  }
+  #btn-claim-submit:active{ transform: scale(.97); }
+  #btn-claim-submit:disabled{ opacity:.6; cursor:default; }
+  #phase-claim-form p.premio-text{
+    font-size:1.1rem; color:var(--cyan); font-weight:800; margin:0 0 4px;
+  }
+  #phase-claim-form p.sub{
+    font-size:.85rem; color:var(--muted); margin:0 0 22px;
+  }
+
+  /* ================= Fase modal: resultado / reclamo ================= */
   #phase-modal h2{
     font-size:1.4rem; font-weight:800; margin:0 0 6px; color:var(--cyan);
   }
@@ -167,6 +195,7 @@
   @media (max-height: 560px){
     .glass-panel{ padding:20px 18px; }
     #wheel-wrap{ width:min(70vw, 260px); height:min(70vw, 260px); }
+    #scratch-wrap{ height:min(42vw, 170px); }
   }
 </style>
 </head>
@@ -180,42 +209,57 @@
      "playback", que ignora la llavecita física de silencio del costado del iPhone.
      Sin esto, el Web Audio API (los tonos de la ruleta) puede quedar mudo aunque
      el AudioContext esté "running", si el celular tiene el switch en silencio. -->
-<audio id="silent-unlock" src="data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==" loop playsinline webkit-playsinline preload="auto"></audio>
+<audio id="silent-unlock" src="data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==" loop playsinline webkit-playsinline preload="auto"></audio>
 
-<!-- ================= Fase 2: formulario obligatorio ================= -->
-<div id="phase-form" class="phase">
+<!-- ================= Fase "game": encabezado + juego (ruleta o raspadita) ================= -->
+<div id="phase-game" class="phase">
+  <img id="logo-img" src="" alt="Logo del negocio">
+  <div id="logo-fallback">🎡</div>
+  <h1 id="biz-title">¡Jugá y Ganá!</h1>
+
+  <div id="game-wheel-container">
+    <div id="wheel-wrap">
+      <div id="wheel-pointer" aria-hidden="true"></div>
+      <svg id="wheel-svg" viewBox="0 0 300 300">
+        <g id="wheel-group"></g>
+      </svg>
+      <button id="btn-girar" type="button" aria-label="Girar la ruleta">GIRAR</button>
+    </div>
+  </div>
+
+  <div id="game-scratch-container">
+    <div id="scratch-wrap">
+      <div id="scratch-prize-label"></div>
+      <canvas id="scratch-canvas"></canvas>
+    </div>
+    <button id="btn-reveal" type="button">Revelar premio</button>
+  </div>
+</div>
+
+<!-- ================= Fase claim-form: formulario final (nombre + pregunta clave + whatsapp) ================= -->
+<div id="phase-claim-form" class="phase phase-hidden">
   <div class="glass-panel">
-    <img id="logo-img" src="" alt="Logo del negocio">
-    <div id="logo-fallback">🎡</div>
-    <h1>¡Girá la <span>Ruleta</span> y Ganá!</h1>
-    <p class="sub">Completá tus datos para jugar y reclamar tu premio al instante.</p>
-    <form id="gate-form" novalidate>
+    <p class="premio-text" id="premio-ganado-texto">Ganaste un premio.</p>
+    <p class="sub">Completá tus datos para reclamarlo al instante.</p>
+    <form id="claim-form" novalidate>
       <div class="field">
-        <label for="gate-nombre">Nombre</label>
-        <input id="gate-nombre" name="nombre" type="text" autocomplete="name" required>
+        <label for="claim-nombre">Nombre</label>
+        <input id="claim-nombre" name="nombre" type="text" autocomplete="name" required>
       </div>
       <div class="field">
-        <label for="gate-whatsapp">WhatsApp</label>
-        <input id="gate-whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" required>
+        <label for="claim-pregunta" id="claim-pregunta-label">Contanos más</label>
+        <input id="claim-pregunta" name="pregunta" type="text" required>
       </div>
-      <button id="btn-submit" type="submit">Probar mi suerte 🍀</button>
+      <div class="field">
+        <label for="claim-whatsapp">WhatsApp</label>
+        <input id="claim-whatsapp" name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" required>
+      </div>
+      <button id="btn-claim-submit" type="submit">Continuar</button>
     </form>
   </div>
 </div>
 
-<!-- ================= Fase 3: ruleta ================= -->
-<div id="phase-wheel" class="phase phase-hidden">
-  <h2>¡Es tu turno!</h2>
-  <div id="wheel-wrap">
-    <div id="wheel-pointer" aria-hidden="true"></div>
-    <svg id="wheel-svg" viewBox="0 0 300 300">
-      <g id="wheel-group"></g>
-    </svg>
-    <button id="btn-girar" type="button" aria-label="Girar la ruleta">GIRAR</button>
-  </div>
-</div>
-
-<!-- ================= Fase 4: resultado ================= -->
+<!-- ================= Fase modal: reclamo por WhatsApp ================= -->
 <div id="phase-modal" class="phase phase-hidden">
   <div class="glass-panel">
     <h2>🎉 ¡Felicitaciones!</h2>
@@ -224,412 +268,12 @@
   </div>
 </div>
 
-<script>
-(function(){
-  "use strict";
-
-  /* ============================================================
-     CONFIGURACIÓN WHITE-LABEL — EDITAR ESTOS 4 VALORES ANTES DE
-     PUBLICAR PARA CADA CLIENTE. No hace falta tocar nada más abajo.
-     ============================================================ */
-  const LOGO_PATH = 'assets/logo.png';
-  const WHATSAPP_NUMBER = '5493816334040'; // con código de país, solo dígitos
-  const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/kl9nsa3kkynuig6jo4689f7napvr2u2m'; // Webhook de Make
-  const PREMIOS = ['25% de Descuento', '50% de Descuento']; // únicos dos premios posibles
-
-  const SECTORS_PER_PRIZE = 3;
-  const SECTOR_COLORS = ['#0A0A0A', '#00E5FF', '#F5A623'];
-  const WHEEL_CX = 150, WHEEL_CY = 150, WHEEL_R = 145;
-
-  // ---- Audio: ticks de giro + jingle de victoria (Web Audio API, sin archivos externos) ----
-  let audioCtx = null;
-  let audioBufferUnlocked = false;
-  function getAudioCtx(){
-    if (!window.AudioContext && !window.webkitAudioContext) return null;
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    return audioCtx;
-  }
-  // Los navegadores móviles crean el AudioContext en estado 'suspended' hasta que
-  // un gesto real del usuario lo desbloquea; hay que esperar el resume() (no solo
-  // dispararlo) para garantizar que los tonos programados justo después sí suenen.
-  // En Safari/iOS el resume() a veces reporta 'running' sin despertar realmente
-  // el hardware de audio: el desbloqueo real llega recién cuando se dispara un
-  // sonido de verdad en ese mismo gesto (equivalente, en Web Audio API, al viejo
-  // truco de play()+pause()+currentTime=0 con <audio>). Por eso reforzamos con
-  // un buffer silencioso de 1 sample, una sola vez.
-  async function unlockAudio(){
-    const ctx = getAudioCtx();
-    if (!ctx) return ctx;
-    if (ctx.state === 'suspended'){
-      try { await ctx.resume(); } catch (e) {}
-    }
-    if (!audioBufferUnlocked){
-      try {
-        const silentBuffer = ctx.createBuffer(1, 1, 22050);
-        const source = ctx.createBufferSource();
-        source.buffer = silentBuffer;
-        source.connect(ctx.destination);
-        source.start(0);
-        audioBufferUnlocked = true;
-      } catch (e) {}
-      // Arranca el <audio> silencioso en loop: pone la sesión de audio de iOS en
-      // categoría "playback", que suena aunque el switch físico esté en silencio.
-      const silentTag = document.getElementById('silent-unlock');
-      if (silentTag){
-        silentTag.play().catch(function(){});
-      }
-    }
-    return ctx;
-  }
-  function playTone(freq, startOffset, duration, type, peakGain){
-    const ctx = getAudioCtx();
-    if (!ctx) return;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const t0 = ctx.currentTime + startOffset;
-    osc.type = type || 'sine';
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(peakGain || 0.18, t0 + 0.008);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t0);
-    osc.stop(t0 + duration + 0.02);
-  }
-  function playTick(){
-    playTone(1200, 0, 0.06, 'square', 0.15);
-  }
-  function playWinJingle(){
-    [523, 659, 784, 1047].forEach(function(freq, i){
-      playTone(freq, i * 0.12, 0.22, 'triangle', 0.2);
-    });
-  }
-
-  // ---- Referencias DOM ----
-  const cameraBg     = document.getElementById('camera-bg');
-  const fallbackBg   = document.getElementById('fallback-bg');
-  const phaseForm    = document.getElementById('phase-form');
-  const phaseWheel   = document.getElementById('phase-wheel');
-  const phaseModal   = document.getElementById('phase-modal');
-  const logoImg      = document.getElementById('logo-img');
-  const logoFallback = document.getElementById('logo-fallback');
-  const gateForm      = document.getElementById('gate-form');
-  const gateNombre    = document.getElementById('gate-nombre');
-  const gateWhatsapp  = document.getElementById('gate-whatsapp');
-  const btnSubmit     = document.getElementById('btn-submit');
-  const wheelGroup    = document.getElementById('wheel-group');
-  const btnGirar      = document.getElementById('btn-girar');
-  const premioTexto   = document.getElementById('premio-texto');
-  const btnReclamar   = document.getElementById('btn-reclamar');
-
-  const state = {
-    nombre: '',
-    whatsapp: '',
-    winningPrizeIndex: 0
-  };
-
-  // ---- Fase 1: cámara de fondo ----
-  function initCamera(){
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      showFallbackBg();
-      return;
-    }
-    // getUserMedia requiere contexto seguro (https o localhost); en file://
-    // o http:// plano el navegador rechaza la promesa por política de seguridad.
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      .then(function(stream){
-        cameraBg.srcObject = stream;
-        const p = cameraBg.play();
-        if (p && p.catch) p.catch(function(){});
-      })
-      .catch(function(err){
-        console.warn('[Camara] No se pudo acceder:', err && err.name);
-        showFallbackBg();
-      });
-  }
-
-  function showFallbackBg(){
-    cameraBg.style.display = 'none';
-    fallbackBg.style.display = 'block';
-  }
-
-  document.addEventListener('visibilitychange', function(){
-    if (document.visibilityState !== 'visible') return;
-    if (cameraBg.srcObject && cameraBg.paused){
-      const p = cameraBg.play();
-      if (p && p.catch) p.catch(function(){});
-    }
-  });
-
-  // ---- Logo con degradado si no existe el asset ----
-  logoImg.addEventListener('error', function(){
-    logoImg.style.display = 'none';
-    logoFallback.style.display = 'block';
-  });
-  logoImg.src = LOGO_PATH;
-
-  // ---- State machine de fases ----
-  function goToPhase(nextEl){
-    const current = document.querySelector('.phase:not(.phase-hidden)');
-    if (current === nextEl) return;
-
-    if (current){
-      current.classList.add('fade-out');
-      setTimeout(function(){
-        current.classList.add('phase-hidden');
-        current.classList.remove('fade-out');
-      }, 350);
-    }
-
-    nextEl.classList.remove('phase-hidden');
-    nextEl.style.opacity = '0';
-    requestAnimationFrame(function(){
-      requestAnimationFrame(function(){
-        nextEl.style.opacity = '1';
-      });
-    });
-  }
-
-  // ---- CRM: POST fire-and-forget a Make.com ----
-  function nowDDMMYYYYHHmm(){
-    const d = new Date();
-    const pad = function(n){ return String(n).padStart(2, '0'); };
-    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() +
-      ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
-  }
-
-  function formatWhatsapp(raw){
-    // Deja solo dígitos: quita espacios, guiones, paréntesis y el signo '+'.
-    const digits = (raw || '').replace(/\D/g, '');
-
-    // Ya viene completo con prefijo argentino (549 + 10 dígitos) -> se conserva tal cual.
-    if (digits.length === 13 && digits.startsWith('549')) return digits;
-
-    // Número local de 10 dígitos (código de área + número, ej. 3816334040) -> anteponer 549.
-    if (digits.length === 10) return '549' + digits;
-
-    return digits;
-  }
-
-  function postToCRM(payload){
-    if (!MAKE_WEBHOOK_URL || MAKE_WEBHOOK_URL.indexOf('XXXXXXXX') !== -1){
-      console.warn('[CRM] MAKE_WEBHOOK_URL no configurada, se omite el registro.');
-      return;
-    }
-    // Content-Type text/plain evita el preflight CORS (OPTIONS) que muchos
-    // webhooks de Make no responden bien — Make igual parsea el body como JSON.
-    // keepalive asegura el envío aunque la página navegue (ej: al abrir WhatsApp).
-    fetch(MAKE_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-      body: JSON.stringify(payload),
-      keepalive: true
-    }).catch(function(err){
-      console.warn('[CRM] No se pudo registrar la acción:', err);
-    });
-  }
-
-  // ---- Fase 2: formulario ----
-  gateForm.addEventListener('submit', function(e){
-    e.preventDefault();
-
-    // Candado 2: anti-duplicados — deshabilitar de inmediato.
-    btnSubmit.disabled = true;
-    btnSubmit.textContent = 'Enviando...';
-
-    // Desbloquea el AudioContext en el primer gesto real del usuario (requisito
-    // de autoplay en mobile) para que los sonidos de la ruleta suenen más adelante.
-    unlockAudio();
-
-    const nombre = gateNombre.value.trim();
-    const whatsapp = gateWhatsapp.value.trim();
-
-    // Candado 1: captura preventiva — se dispara ya, independiente de todo lo demás.
-    postToCRM({
-      fecha: nowDDMMYYYYHHmm(),
-      nombre: nombre,
-      whatsapp: formatWhatsapp(whatsapp),
-      premio: 'Jugando - Gira ruleta',
-      observaciones: 'Pendiente'
-    });
-
-    state.nombre = nombre;
-    state.whatsapp = whatsapp;
-
-    goToPhase(phaseWheel);
-  });
-
-  // ---- Fase 3: construcción de la ruleta ----
-  function polarToCartesian(cx, cy, r, angleDeg){
-    const rad = (angleDeg - 90) * Math.PI / 180;
-    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-  }
-
-  function buildWheel(){
-    const totalSectors = PREMIOS.length * SECTORS_PER_PRIZE;
-    const anglePerSector = 360 / totalSectors;
-
-    wheelGroup.innerHTML = '';
-    wheelGroup.style.transformOrigin = WHEEL_CX + 'px ' + WHEEL_CY + 'px';
-    wheelGroup.style.transform = 'rotate(0deg)';
-
-    for (let i = 0; i < totalSectors; i++){
-      const startAngle = i * anglePerSector;
-      const endAngle = startAngle + anglePerSector;
-      const p1 = polarToCartesian(WHEEL_CX, WHEEL_CY, WHEEL_R, startAngle);
-      const p2 = polarToCartesian(WHEEL_CX, WHEEL_CY, WHEEL_R, endAngle);
-      const largeArc = anglePerSector > 180 ? 1 : 0;
-      const fill = SECTOR_COLORS[i % SECTOR_COLORS.length];
-
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d',
-        'M ' + WHEEL_CX + ',' + WHEEL_CY +
-        ' L ' + p1.x + ',' + p1.y +
-        ' A ' + WHEEL_R + ',' + WHEEL_R + ' 0 ' + largeArc + ' 1 ' + p2.x + ',' + p2.y +
-        ' Z');
-      path.setAttribute('fill', fill);
-      path.setAttribute('stroke', '#000');
-      path.setAttribute('stroke-width', '1.5');
-      wheelGroup.appendChild(path);
-
-      const midAngle = startAngle + anglePerSector / 2;
-      const textPos = polarToCartesian(WHEEL_CX, WHEEL_CY, WHEEL_R * 0.62, midAngle);
-      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', textPos.x);
-      text.setAttribute('y', textPos.y);
-      text.setAttribute('text-anchor', 'middle');
-      text.setAttribute('dominant-baseline', 'middle');
-      text.setAttribute('transform', 'rotate(' + midAngle + ' ' + textPos.x + ' ' + textPos.y + ')');
-      text.setAttribute('font-family', 'League Spartan, sans-serif');
-      text.setAttribute('font-weight', '800');
-      text.setAttribute('font-size', '11');
-      text.setAttribute('fill', fill === '#0A0A0A' ? '#FFFFFF' : '#0A0A0A');
-      text.textContent = PREMIOS[i % PREMIOS.length];
-      wheelGroup.appendChild(text);
-    }
-
-    return { totalSectors, anglePerSector };
-  }
-
-  const wheelLayout = buildWheel();
-  let spinning = false;
-
-  btnGirar.addEventListener('click', async function(){
-    if (spinning) return;
-    spinning = true;
-    btnGirar.disabled = true;
-
-    // Re-asegura el desbloqueo del AudioContext en este gesto también: si el
-    // navegador lo suspendió entre el submit y ahora, playTick()/playWinJingle()
-    // se quedarían mudos sin este resume() explícito.
-    await unlockAudio();
-
-    state.winningPrizeIndex = Math.floor(Math.random() * PREMIOS.length);
-
-    const candidateSectors = [];
-    for (let i = 0; i < wheelLayout.totalSectors; i++){
-      if (i % PREMIOS.length === state.winningPrizeIndex) candidateSectors.push(i);
-    }
-    const landingSector = candidateSectors[Math.floor(Math.random() * candidateSectors.length)];
-    const targetMidAngle = landingSector * wheelLayout.anglePerSector + wheelLayout.anglePerSector / 2;
-
-    const extraSpins = 5 + Math.floor(Math.random() * 3); // 5, 6 o 7 vueltas
-    const finalRotation = extraSpins * 360 + (360 - targetMidAngle);
-    const duration = (4 + Math.random() * 2).toFixed(2); // 4.00–6.00s
-
-    wheelGroup.style.transitionDuration = duration + 's';
-    wheelGroup.style.transitionTimingFunction = 'cubic-bezier(0.17, 0.67, 0.12, 0.99)';
-
-    requestAnimationFrame(function(){
-      requestAnimationFrame(function(){
-        wheelGroup.style.transform = 'rotate(' + finalRotation + 'deg)';
-      });
-    });
-
-    let done = false;
-
-    // Ticks de audio sincronizados con el ángulo real renderizado por el navegador.
-    let lastSectorIndex = null;
-    function trackSpinAudio(){
-      const style = getComputedStyle(wheelGroup).transform;
-      if (style && style !== 'none'){
-        const matrix = style.match(/matrix\(([^)]+)\)/);
-        if (matrix){
-          const parts = matrix[1].split(',').map(parseFloat);
-          let angle = Math.atan2(parts[1], parts[0]) * 180 / Math.PI;
-          if (angle < 0) angle += 360;
-          const sectorIndex = Math.floor(angle / wheelLayout.anglePerSector);
-          if (sectorIndex !== lastSectorIndex){
-            lastSectorIndex = sectorIndex;
-            playTick();
-          }
-        }
-      }
-      if (!done) requestAnimationFrame(trackSpinAudio);
-    }
-    requestAnimationFrame(trackSpinAudio);
-
-    function finish(){
-      if (done) return;
-      done = true;
-      onSpinComplete();
-    }
-    wheelGroup.addEventListener('transitionend', function handler(ev){
-      if (ev.propertyName !== 'transform') return;
-      wheelGroup.removeEventListener('transitionend', handler);
-      finish();
-    });
-    setTimeout(finish, parseFloat(duration) * 1000 + 300);
-  });
-
-  // ---- Fase 4: resultado ----
-  function fireConfetti(){
-    if (!window.confetti) return;
-    window.confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 }, colors: ['#00E5FF', '#F5A623', '#FFFFFF'] });
-    setTimeout(function(){
-      window.confetti({ particleCount: 100, spread: 120, origin: { y: 0.4 }, colors: ['#00E5FF', '#F5A623', '#FFFFFF'] });
-    }, 300);
-  }
-
-  function onSpinComplete(){
-    const premio = PREMIOS[state.winningPrizeIndex];
-    premioTexto.textContent = 'Ganaste: ' + premio;
-
-    goToPhase(phaseModal);
-    fireConfetti();
-    playWinJingle();
-
-    postToCRM({
-      fecha: nowDDMMYYYYHHmm(),
-      nombre: state.nombre,
-      whatsapp: formatWhatsapp(state.whatsapp),
-      premio: premio,
-      observaciones: 'Premio Ganado'
-    });
-  }
-
-  btnReclamar.addEventListener('click', function(){
-    const premio = PREMIOS[state.winningPrizeIndex];
-
-    // Registro del reclamo en el CRM antes de abrir WhatsApp.
-    postToCRM({
-      fecha: nowDDMMYYYYHHmm(),
-      nombre: state.nombre,
-      whatsapp: formatWhatsapp(state.whatsapp),
-      premio: premio,
-      observaciones: 'Premio Reclamado'
-    });
-
-    const msg = '¡Hola! Mi nombre es ' + state.nombre + ', acabo de girar la ruleta en tu local y gané un ' + premio + '. Quiero validarlo ahora en la caja.';
-    const url = 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(msg);
-    window.open(url, '_blank');
-  });
-
-  // ---- Bootstrap ----
-  initCamera();
-
-})();
-</script>
+<script src="assets/js/weighted-random.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/crm.js"></script>
+<script src="assets/js/wheel.js"></script>
+<script src="assets/js/scratch.js"></script>
+<script src="assets/js/app.js"></script>
 
 </body>
 </html>

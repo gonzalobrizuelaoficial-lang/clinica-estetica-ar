@@ -1,0 +1,21 @@
+{
+  "name": "demo-clinicas-ar-flow",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Servidor local del configurador AR FLOW: sirve el sitio estático y agrega subida de logo + extracción de datos de negocio con IA.",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.121.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "multer": "^2.0.0",
+    "sharp": "^0.35.4",
+    "zod": "^3.23.8"
+  }
+}

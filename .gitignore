@@ -1,5 +1,20 @@
 # Configuración local de Claude Code (permisos específicos de esta máquina)
 .claude/settings.local.json
 
+# Clave de API y dependencias del mini-servidor local
+.env
+node_modules/
+
 # Export de CRM: puede contener datos personales de leads (nombre, whatsapp, pagos)
 CRM_*.csv
+
+# Documento interno de negocio (checklist/objeciones) — uso personal, no se comparte con clientes
+ONBOARDING-INTERNO.md
+
+# QR generados manualmente: cada uno apunta al link de UNA campaña puntual, no se reusan para otra
+assets/qr-*.png
+assets/qr-*.svg
+
+# Videos de oferta viejos (no los usa el sitio actual, quedan solo localmente)
+demo-clinica.oferta.mp4.mp4
+demo-clinica.oferta.ORIGINAL-BACKUP.mp4
