@@ -219,7 +219,13 @@
 
     function buildWheel(){
       const sectorsPerPrize = sectorsPerPrizeFor(config.prizes.length);
-      const totalSectors = config.prizes.length * sectorsPerPrize;
+      const rawTotalSectors = config.prizes.length * sectorsPerPrize;
+      // Con 2 colores alternados, una cantidad impar de gajos SIEMPRE deja un
+      // punto donde se tocan 2 del mismo color (un ciclo impar no admite
+      // 2-coloreado propio) — se fuerza a par sumando 1 gajo (repite el
+      // último premio una vez más; no cambia las probabilidades, que las
+      // define pickWeightedIndex por peso, no por cantidad de gajos).
+      const totalSectors = rawTotalSectors % 2 === 0 ? rawTotalSectors : rawTotalSectors + 1;
       const anglePerSector = 360 / totalSectors;
       const angleRad = anglePerSector * Math.PI / 180;
       const textRadius = WHEEL_R * 0.62;
