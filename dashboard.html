@@ -52,6 +52,10 @@
   th.num{ text-align:right; }
   .empty-row td{ color:var(--muted); font-style:italic; }
 
+  details summary{ cursor:pointer; color:var(--muted); font-size:.78rem; padding:4px 0; }
+  details table{ margin-top:8px; font-size:.8rem; }
+  details th, details td{ padding:6px 8px; }
+
   .badge{ display:inline-flex; align-items:center; gap:5px; font-size:.72rem; font-weight:700; padding:3px 9px; border-radius:999px; }
   .badge.on{ background:rgba(61,220,132,.14); color:var(--ok); }
   .badge.off{ background:rgba(255,107,107,.14); color:var(--danger); }
@@ -139,6 +143,30 @@
     return Math.round((campaign.reclamado / campaign.jugado) * 100) + '%';
   }
 
+  function escapeHtml(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function recentPlaysDetail(recentPlays){
+    if (!recentPlays || recentPlays.length === 0){
+      return '<details><summary>Ver últimas jugadas</summary>' +
+        '<p class="status-msg">Sin jugadas registradas todavía.</p></details>';
+    }
+    const rows = recentPlays.map(function(p){
+      return '<tr>' +
+        '<td>' + escapeHtml(p.fecha) + '</td>' +
+        '<td>' + escapeHtml(p.nombre) + '</td>' +
+        '<td>' + escapeHtml(p.whatsapp) + '</td>' +
+        '<td>' + escapeHtml(p.premio) + '</td>' +
+        '<td>' + escapeHtml(p.estado) + '</td>' +
+        '</tr>';
+    }).join('');
+    return '<details><summary>Ver últimas jugadas (' + recentPlays.length + ')</summary>' +
+      '<table><thead><tr><th>Fecha</th><th>Nombre</th><th>WhatsApp</th><th>Premio</th><th>Estado</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></details>';
+  }
+
   function campaignsTable(campaigns){
     if (!campaigns || campaigns.length === 0){
       return '<table><tbody><tr class="empty-row"><td>Todavía no hay campañas vinculadas a esta cuenta.</td></tr></tbody></table>';
@@ -150,7 +178,8 @@
         '<td class="num">' + c.ganado + '</td>' +
         '<td class="num">' + c.reclamado + '</td>' +
         '<td class="num">' + conversion(c) + '</td>' +
-        '</tr>';
+        '</tr>' +
+        '<tr><td colspan="5">' + recentPlaysDetail(c.recentPlays) + '</td></tr>';
     }).join('');
     return '<table><thead><tr>' +
       '<th>Campaña</th><th class="num">Jugado</th><th class="num">Ganado</th><th class="num">Reclamado</th><th class="num">% Reclamado/Jugado</th>' +

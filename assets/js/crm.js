@@ -106,21 +106,80 @@
     tryOnce();
   }
 
-  // Contador liviano de rendimiento (jugado/ganado/reclamado) para el
-  // dashboard interno — camino paralelo al envío a Make, no lo reemplaza ni
-  // depende de él.
-  function pingStats(cid, type){
-    if (!cid) return;
-    fetch('/api/log-event', {
+  const PENDING_STATS_KEY = 'arflow_pending_stats';
+
+  function readPendingStatsQueue(){
+    try {
+      const raw = window.localStorage.getItem(PENDING_STATS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function writePendingStatsQueue(queue){
+    try {
+      window.localStorage.setItem(PENDING_STATS_KEY, JSON.stringify(queue.slice(-PENDING_MAX)));
+    } catch (e) {
+      // localStorage no disponible -> se pierde el respaldo, no rompe el flujo del visitante.
+    }
+  }
+
+  function queueFailedStats(body){
+    const queue = readPendingStatsQueue();
+    queue.push(body);
+    writePendingStatsQueue(queue);
+  }
+
+  function sendStatsOnce(body){
+    return fetch('/api/log-event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cid: cid, type: type }),
+      body: JSON.stringify(body),
       keepalive: true
-    }).catch(function(){ /* solo estadística, no crítico para el visitante */ });
+    });
+  }
+
+  // Reintenta lo que quedó pendiente de una visita anterior en este mismo
+  // navegador — mismo motivo que flushPendingQueue (arriba) para el envío a Make.
+  function flushPendingStatsQueue(){
+    const queue = readPendingStatsQueue();
+    if (queue.length === 0) return;
+    writePendingStatsQueue([]);
+    queue.forEach(function(body){
+      sendStatsOnce(body).catch(function(){ queueFailedStats(body); });
+    });
+  }
+
+  // Contador + detalle liviano de rendimiento (jugado/ganado/reclamado/duplicado)
+  // para el dashboard interno — camino paralelo al envío a Make, no lo
+  // reemplaza ni depende de él. Con reintentos + cola igual que postToCRM: sin
+  // esto, una jugada perdida por un hipo de red desincroniza el contador del
+  // panel respecto de lo que sí quedó registrado en el Sheet.
+  function pingStats(cid, type, details){
+    if (!cid) return;
+    const body = Object.assign({ cid: cid, type: type }, details || {});
+
+    let attempt = 0;
+    function tryOnce(){
+      return sendStatsOnce(body).catch(function(err){
+        attempt++;
+        if (attempt < RETRY_DELAYS_MS.length){
+          return delay(RETRY_DELAYS_MS[attempt]).then(tryOnce);
+        }
+        console.warn('[stats] No se pudo registrar el evento tras reintentos, se guarda para reintentar más adelante:', err);
+        queueFailedStats(body);
+      });
+    }
+    tryOnce();
   }
 
   flushPendingQueue();
-  window.addEventListener('online', flushPendingQueue);
+  flushPendingStatsQueue();
+  window.addEventListener('online', function(){
+    flushPendingQueue();
+    flushPendingStatsQueue();
+  });
 
   window.ARFLOW.crm = {
     nowDDMMYYYYHHmm: nowDDMMYYYYHHmm,

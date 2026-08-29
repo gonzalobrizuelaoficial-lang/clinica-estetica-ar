@@ -421,6 +421,13 @@ app.post('/api/extract-business-info', requireAuth('admin'), function (req, res)
 // Camino paralelo y liviano al envío a Make (assets/js/crm.js:pingStats):
 // solo cuenta, no reemplaza ni depende del registro en el Sheet del cliente.
 const STATS_EVENT_TYPES = ['jugado', 'ganado', 'reclamado'];
+// 'duplicado' no suma a los contadores de arriba (no es una jugada nueva),
+// pero sí queda como detalle visible en el panel (ver 'plays:<cid>' abajo).
+const LOG_EVENT_TYPES = STATS_EVENT_TYPES.concat(['duplicado']);
+// Cuántos días se conserva el detalle de jugadas de una campaña sin actividad
+// antes de que Redis lo libere solo (mismo patrón TTL que 'played:' arriba).
+const PLAYS_TTL_DAYS = 90;
+const RECENT_PLAYS_LIMIT = 20;
 
 app.post('/api/log-event', async function (req, res) {
   const redis = getRedisClient();
@@ -428,12 +435,28 @@ app.post('/api/log-event', async function (req, res) {
 
   const cid = req.body && req.body.cid;
   const type = req.body && req.body.type;
-  if (!cid || typeof cid !== 'string' || STATS_EVENT_TYPES.indexOf(type) === -1) {
+  const sessionId = req.body && req.body.sessionId;
+  if (!cid || typeof cid !== 'string' || LOG_EVENT_TYPES.indexOf(type) === -1) {
     return res.status(400).json({ error: 'Falta cid o type inválido.' });
   }
 
   try {
-    await redis.hincrby('stats:' + cid, type, 1);
+    if (STATS_EVENT_TYPES.indexOf(type) !== -1) {
+      await redis.hincrby('stats:' + cid, type, 1);
+    }
+    if (sessionId && typeof sessionId === 'string') {
+      const detail = {
+        fecha: (req.body && req.body.fecha) || '',
+        nombre: (req.body && req.body.nombre) || '',
+        whatsapp: (req.body && req.body.whatsapp) || '',
+        premio: (req.body && req.body.premio) || '',
+        estado: (req.body && req.body.estado) || '',
+        ts: Date.now(),
+      };
+      const playsKey = 'plays:' + cid;
+      await redis.hset(playsKey, { [sessionId]: JSON.stringify(detail) });
+      await redis.expire(playsKey, PLAYS_TTL_DAYS * 86400);
+    }
     res.status(204).end();
   } catch (err) {
     console.error('[log-event] error de Redis:', err);
@@ -443,12 +466,25 @@ app.post('/api/log-event', async function (req, res) {
 
 async function getStatsForCid(cid) {
   const redis = getRedisClient();
-  if (!redis) return { jugado: 0, ganado: 0, reclamado: 0 };
+  if (!redis) return { jugado: 0, ganado: 0, reclamado: 0, recentPlays: [] };
   const raw = await redis.hgetall('stats:' + cid);
+  const rawPlays = await redis.hgetall('plays:' + cid);
+  const recentPlays = Object.values(rawPlays || {})
+    .map(function (v) {
+      try {
+        return typeof v === 'string' ? JSON.parse(v) : v;
+      } catch (e) {
+        return null;
+      }
+    })
+    .filter(Boolean)
+    .sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); })
+    .slice(0, RECENT_PLAYS_LIMIT);
   return {
     jugado: parseInt((raw && raw.jugado) || 0, 10),
     ganado: parseInt((raw && raw.ganado) || 0, 10),
     reclamado: parseInt((raw && raw.reclamado) || 0, 10),
+    recentPlays: recentPlays,
   };
 }
 

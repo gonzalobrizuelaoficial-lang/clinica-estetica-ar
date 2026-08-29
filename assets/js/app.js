@@ -255,7 +255,12 @@
       session_id: state.sessionId,
       observaciones: 'Jugó - Pendiente de datos'
     });
-    window.ARFLOW.crm.pingStats(config.cid, 'jugado');
+    window.ARFLOW.crm.pingStats(config.cid, 'jugado', {
+      sessionId: state.sessionId,
+      fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+      premio: premio,
+      estado: 'Jugando'
+    });
   }
 
   function mountGame(){
@@ -327,6 +332,14 @@
             session_id: state.sessionId,
             observaciones: 'Intento Duplicado Bloqueado'
           });
+          window.ARFLOW.crm.pingStats(config.cid, 'duplicado', {
+            sessionId: state.sessionId,
+            fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+            nombre: state.nombre,
+            whatsapp: state.whatsapp,
+            premio: config.prizes[state.winningPrizeIndex].l,
+            estado: 'Intento Duplicado Bloqueado'
+          });
           goToPhase(phaseDuplicate);
           return;
         }
@@ -343,7 +356,14 @@
           session_id: state.sessionId,
           observaciones: 'Premio Ganado'
         });
-        window.ARFLOW.crm.pingStats(config.cid, 'ganado');
+        window.ARFLOW.crm.pingStats(config.cid, 'ganado', {
+          sessionId: state.sessionId,
+          fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+          nombre: state.nombre,
+          whatsapp: state.whatsapp,
+          premio: config.prizes[state.winningPrizeIndex].l,
+          estado: 'Premio Ganado'
+        });
 
         goToPhase(phaseModal);
       });
@@ -364,7 +384,14 @@
       session_id: state.sessionId,
       observaciones: 'Premio Reclamado'
     });
-    window.ARFLOW.crm.pingStats(config.cid, 'reclamado');
+    window.ARFLOW.crm.pingStats(config.cid, 'reclamado', {
+      sessionId: state.sessionId,
+      fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+      nombre: state.nombre,
+      whatsapp: state.whatsapp,
+      premio: premio,
+      estado: 'Premio Reclamado'
+    });
 
     // Mensaje prolijo y personalizado: un bloque 💬/➡️ por cada pregunta que
     // el visitante efectivamente respondió (las que dejó en blanco no
