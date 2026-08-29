@@ -117,6 +117,15 @@
   document.documentElement.style.setProperty('--bg', config.colors.bg);
   document.documentElement.style.setProperty('--cyan', config.colors.p);
   document.documentElement.style.setProperty('--amber', config.colors.a);
+  // Tonos derivados de los 2 colores de marca (no un color fijo) para los
+  // gradientes "glossy" y el glow de la ruleta/raspadita — así el efecto se
+  // adapta al negocio en vez de verse igual para todos los clientes.
+  document.documentElement.style.setProperty('--amber-light', window.ARFLOW.colors.shade(config.colors.a, 0.45));
+  document.documentElement.style.setProperty('--amber-dark', window.ARFLOW.colors.shade(config.colors.a, -0.35));
+  document.documentElement.style.setProperty('--amber-glow', window.ARFLOW.colors.toRgba(config.colors.a, 0.55));
+  document.documentElement.style.setProperty('--cyan-light', window.ARFLOW.colors.shade(config.colors.p, 0.45));
+  document.documentElement.style.setProperty('--cyan-dark', window.ARFLOW.colors.shade(config.colors.p, -0.35));
+  document.documentElement.style.setProperty('--cyan-glow', window.ARFLOW.colors.toRgba(config.colors.p, 0.55));
 
   // Hasta 2 preguntas opcionales (config.q, 0 a 2 elementos) — se renderiza
   // un campo por cada una, ninguno obligatorio.

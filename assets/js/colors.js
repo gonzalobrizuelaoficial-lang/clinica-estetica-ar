@@ -37,11 +37,37 @@
     return contrastColor(bgHex);
   }
 
+  function clamp255(v){ return Math.max(0, Math.min(255, Math.round(v))); }
+
+  // Aclara (percent > 0) u oscurece (percent < 0) un color de marca para armar
+  // gradientes/glow "glossy" sin depender de un color fijo — así el efecto se
+  // adapta al color de cada negocio en vez de quedar hardcodeado a uno solo.
+  // percent en [-1, 1]: 0.35 = 35% más cerca del blanco, -0.35 = 35% más cerca del negro.
+  function shade(hex, percent){
+    const rgb = hexToRgb(hex);
+    const target = percent >= 0 ? 255 : 0;
+    const p = Math.abs(percent);
+    const mix = function(channel){ return clamp255(channel + (target - channel) * p); };
+    const r = mix(rgb.r), g = mix(rgb.g), b = mix(rgb.b);
+    const toHex = function(v){ return v.toString(16).padStart(2, '0'); };
+    return '#' + toHex(r) + toHex(g) + toHex(b);
+  }
+
+  // Color de marca con transparencia, para glows/sombras suaves (box-shadow,
+  // fondos radiales) sin necesitar color-mix() del CSS (soporte más parejo
+  // entre navegadores/WebViews).
+  function toRgba(hex, alpha){
+    const rgb = hexToRgb(hex);
+    return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
+  }
+
   window.ARFLOW.colors = {
     hexToRgb: hexToRgb,
     relativeLuminance: relativeLuminance,
     contrastRatio: contrastRatio,
     contrastColor: contrastColor,
-    pickReadableColor: pickReadableColor
+    pickReadableColor: pickReadableColor,
+    shade: shade,
+    toRgba: toRgba
   };
 })();

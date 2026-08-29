@@ -87,32 +87,81 @@
     position:relative;
     width:min(88vw, 400px); height:min(88vw, 400px);
   }
+  /* Halo de rayos detrás de la ruleta, en los colores de marca — gira lento
+     y pulsa de forma independiente al giro de la ruleta en sí. */
+  #wheel-wrap::before{
+    content:'';
+    position:absolute; inset:-16%;
+    z-index:0;
+    border-radius:50%;
+    background: conic-gradient(from 0deg,
+      var(--amber) 0deg, transparent 40deg,
+      var(--cyan) 90deg, transparent 130deg,
+      var(--amber) 180deg, transparent 220deg,
+      var(--cyan) 270deg, transparent 310deg,
+      var(--amber) 360deg);
+    filter: blur(16px);
+    opacity:.5;
+    animation: wheel-rays-spin 16s linear infinite, wheel-rays-pulse 3.4s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes wheel-rays-spin{ to{ transform:rotate(360deg); } }
+  @keyframes wheel-rays-pulse{ 0%,100%{ opacity:.4; } 50%{ opacity:.65; } }
   #wheel-svg{
+    position:relative; z-index:1;
     width:100%; height:100%;
     filter: drop-shadow(0 10px 30px rgba(0,0,0,.5));
   }
+  .wheel-bulb{ animation: bulb-twinkle 1.6s ease-in-out infinite; }
+  @keyframes bulb-twinkle{ 0%,100%{ opacity:.35; } 50%{ opacity:1; } }
   #wheel-pointer{
-    position:absolute; top:-6px; left:50%; transform:translateX(-50%);
-    width:0; height:0; z-index:2;
-    border-left:16px solid transparent;
-    border-right:16px solid transparent;
-    border-top:26px solid var(--amber);
-    filter: drop-shadow(0 3px 6px rgba(0,0,0,.5));
+    position:absolute; top:-10px; left:50%; z-index:2;
+    width:26px; height:34px;
+    transform:translateX(-50%);
+    background: linear-gradient(160deg,
+      var(--amber-light, var(--amber)), var(--amber) 55%, var(--amber-dark, var(--amber)));
+    clip-path: polygon(50% 100%, 0% 35%, 20% 0%, 80% 0%, 100% 35%);
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,.55));
+    animation: pointer-bounce 1.8s ease-in-out infinite;
+  }
+  @keyframes pointer-bounce{
+    0%,100%{ transform:translateX(-50%) translateY(0); }
+    50%{ transform:translateX(-50%) translateY(3px); }
   }
   #btn-girar{
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
     z-index:3;
-    width:78px; height:78px; border-radius:50%;
+    width:82px; height:82px; border-radius:50%;
     border:3px solid var(--bg);
-    background: var(--amber); color:#1A1200;
+    background: radial-gradient(circle at 35% 28%,
+      var(--amber-light, var(--amber)), var(--amber) 55%, var(--amber-dark, var(--amber)));
+    color:#1A1200;
     font-family:'League Spartan', sans-serif;
     font-weight:800; font-size:1rem; letter-spacing:.03em;
     cursor:pointer;
+    overflow:hidden;
     box-shadow: 0 8px 20px rgba(0,0,0,.5);
     transition: transform .12s ease, opacity .2s ease;
+    animation: btn-girar-glow 2.2s ease-in-out infinite;
+  }
+  #btn-girar::after{
+    content:'';
+    position:absolute; inset:0;
+    background: linear-gradient(115deg, transparent 25%, rgba(255,255,255,.55) 50%, transparent 75%);
+    transform: translateX(-120%);
+    animation: btn-girar-shine 3.4s ease-in-out infinite;
+  }
+  @keyframes btn-girar-glow{
+    0%,100%{ box-shadow: 0 8px 20px rgba(0,0,0,.5), 0 0 0 0 var(--amber-glow, transparent); }
+    50%{ box-shadow: 0 8px 20px rgba(0,0,0,.5), 0 0 18px 6px var(--amber-glow, transparent); }
+  }
+  @keyframes btn-girar-shine{
+    0%, 15%{ transform:translateX(-120%); }
+    45%, 100%{ transform:translateX(120%); }
   }
   #btn-girar:active{ transform:translate(-50%,-50%) scale(.94); }
   #btn-girar:disabled{ opacity:.65; cursor:default; }
+  #btn-girar:disabled, #btn-girar:disabled::after{ animation-play-state:paused; }
 
   /* ================= Juego: raspadita ================= */
   #game-scratch-container{ display:flex; flex-direction:column; align-items:center; gap:18px; }
@@ -121,6 +170,23 @@
     width:min(88vw, 400px); height:min(52vw, 220px);
     border-radius:20px; overflow:hidden;
     box-shadow: 0 10px 30px rgba(0,0,0,.5);
+    animation: scratch-glow 3s ease-in-out infinite;
+  }
+  @keyframes scratch-glow{
+    0%,100%{ box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 0 0 var(--cyan-glow, transparent); }
+    50%{ box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 22px 2px var(--cyan-glow, transparent); }
+  }
+  #scratch-wrap::after{
+    content:'';
+    position:absolute; inset:0; z-index:2;
+    pointer-events:none;
+    background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.35) 50%, transparent 70%);
+    transform: translateX(-140%);
+    animation: scratch-shine 4.5s ease-in-out infinite;
+  }
+  @keyframes scratch-shine{
+    0%, 20%{ transform:translateX(-140%); }
+    55%, 100%{ transform:translateX(140%); }
   }
   #scratch-prize-label{
     position:absolute; inset:0;
@@ -139,7 +205,9 @@
     background:transparent; border:1px solid rgba(255,255,255,.3);
     color: var(--muted); padding:10px 18px; border-radius:10px;
     font-family:inherit; font-size:.8rem; cursor:pointer;
+    transition: box-shadow .2s ease, border-color .2s ease;
   }
+  #btn-reveal:active{ box-shadow: 0 0 14px 1px var(--cyan-glow, transparent); border-color: var(--cyan); }
 
   /* ================= Fase claim-form: formulario final ================= */
   #claim-form label{
@@ -228,7 +296,7 @@
   <div id="game-wheel-container">
     <div id="wheel-wrap">
       <div id="wheel-pointer" aria-hidden="true"></div>
-      <svg id="wheel-svg" viewBox="0 0 300 300">
+      <svg id="wheel-svg" viewBox="0 0 350 350">
         <g id="wheel-group"></g>
       </svg>
       <button id="btn-girar" type="button" aria-label="Girar la ruleta">GIRAR</button>
