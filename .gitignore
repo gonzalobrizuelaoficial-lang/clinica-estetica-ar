@@ -11,6 +11,9 @@ CRM_*.csv
 # Documento interno de negocio (checklist/objeciones) — uso personal, no se comparte con clientes
 ONBOARDING-INTERNO.md
 
+# Manual de uso del panel (dashboard/configurador/Sheet) — uso personal, no se comparte con clientes
+MANUAL-USO-PANEL.md
+
 # QR generados manualmente: cada uno apunta al link de UNA campaña puntual, no se reusan para otra
 assets/qr-*.png
 assets/qr-*.svg
