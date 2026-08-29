@@ -78,6 +78,10 @@
   .new-client-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
   @media (max-width:560px){ .new-client-grid{ grid-template-columns:1fr; } }
 
+  .add-cid-row{ display:flex; gap:10px; margin-top:14px; }
+  .add-cid-row input{ flex:1; min-width:0; }
+  @media (max-width:560px){ .add-cid-row{ flex-direction:column; } }
+
   #login-hint{ display:none; }
   #login-hint.visible{ display:block; }
   #app{ display:none; }
@@ -198,6 +202,36 @@
       .catch(function(){ btn.disabled = false; });
   }
 
+  function addCampaignId(username, cid, input, btn, msg){
+    if (!cid){
+      msg.textContent = 'Pegá el ID de campaña (cid) primero.';
+      msg.className = 'status-msg error';
+      return;
+    }
+    btn.disabled = true;
+    fetch('/api/admin/accounts/' + encodeURIComponent(username), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ addCampaignId: cid })
+    })
+      .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+      .then(function(result){
+        btn.disabled = false;
+        if (!result.ok){
+          msg.textContent = result.data.error || 'No se pudo agregar la campaña.';
+          msg.className = 'status-msg error';
+          return;
+        }
+        input.value = '';
+        loadStats();
+      })
+      .catch(function(){
+        btn.disabled = false;
+        msg.textContent = 'No se pudo agregar la campaña.';
+        msg.className = 'status-msg error';
+      });
+  }
+
   function renderAdmin(data){
     adminNewClient.style.display = '';
     statsTitle.textContent = 'Rendimiento — todos los clientes';
@@ -219,12 +253,26 @@
           '<button class="btn ' + btnClass + '" data-username="' + client.username + '" data-active="' + (!client.active) + '">' + btnLabel + '</button>' +
         '</div>' +
         campaignsTable(client.campaigns) +
+        '<div class="add-cid-row">' +
+          '<input type="text" class="add-cid-input" data-add-cid-username="' + client.username + '" placeholder="Pegar ID de campaña (cid) para vincularla a este cliente">' +
+          '<button class="btn add-cid-btn" data-add-cid-username="' + client.username + '">Agregar campaña</button>' +
+        '</div>' +
+        '<p class="status-msg add-cid-msg" data-add-cid-username="' + client.username + '"></p>' +
       '</div>';
     }).join('');
 
     statsBody.querySelectorAll('button[data-username]').forEach(function(btn){
       btn.addEventListener('click', function(){
         toggleActive(btn.getAttribute('data-username'), btn.getAttribute('data-active') === 'true', btn);
+      });
+    });
+
+    statsBody.querySelectorAll('.add-cid-btn').forEach(function(btn){
+      const username = btn.getAttribute('data-add-cid-username');
+      const input = statsBody.querySelector('.add-cid-input[data-add-cid-username="' + username + '"]');
+      const msg = statsBody.querySelector('.add-cid-msg[data-add-cid-username="' + username + '"]');
+      btn.addEventListener('click', function(){
+        addCampaignId(username, input.value.trim(), input, btn, msg);
       });
     });
   }
