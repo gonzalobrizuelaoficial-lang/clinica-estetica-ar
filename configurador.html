@@ -216,6 +216,13 @@
     <span class="copied-flag" id="copied-flag">¡Copiado!</span>
     <p id="url-len-error" class="status-msg error"></p>
 
+    <label for="out-cid">ID de campaña (cid) — pegalo en el panel al dar de alta al cliente</label>
+    <div class="link-row">
+      <input id="out-cid" type="text" readonly>
+      <button id="btn-copiar-cid" type="button">Copiar</button>
+    </div>
+    <span class="copied-flag" id="copied-cid-flag">¡Copiado!</span>
+
     <label>QR para imprimir (misma campaña, atribuida por separado)</label>
     <div id="qr-canvas-wrap"><canvas id="qr-canvas"></canvas></div>
     <div class="qr-actions">
@@ -286,6 +293,7 @@
   // ---- Generar link + QR (juntos, auto-atribuidos por canal) ----
   const outputSection = document.getElementById('output');
   const outLink = document.getElementById('out-link');
+  const outCid = document.getElementById('out-cid');
   const urlLenError = document.getElementById('url-len-error');
   const qrCanvas = document.getElementById('qr-canvas');
   const btnGenerar = document.getElementById('btn-generar');
@@ -363,6 +371,7 @@
         lastQrUrl = results[1];
 
         outLink.value = lastUrl;
+        outCid.value = cfg.cid;
         outputSection.classList.add('visible');
 
         window.QRCode.toCanvas(qrCanvas, lastQrUrl, { width: 320, margin: 2, errorCorrectionLevel: 'M' }, function(err){
@@ -394,6 +403,19 @@
       setTimeout(function(){ copiedFlag.classList.remove('visible'); }, 1800);
     }).catch(function(){
       outLink.select();
+      document.execCommand('copy');
+    });
+  });
+
+  // ---- Copiar cid ----
+  const copiedCidFlag = document.getElementById('copied-cid-flag');
+  document.getElementById('btn-copiar-cid').addEventListener('click', function(){
+    if (!outCid.value) return;
+    navigator.clipboard.writeText(outCid.value).then(function(){
+      copiedCidFlag.classList.add('visible');
+      setTimeout(function(){ copiedCidFlag.classList.remove('visible'); }, 1800);
+    }).catch(function(){
+      outCid.select();
       document.execCommand('copy');
     });
   });

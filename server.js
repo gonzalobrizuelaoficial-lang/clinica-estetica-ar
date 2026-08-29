@@ -16,7 +16,6 @@ const PORT = process.env.PORT || 8934;
 const ROOT = __dirname;
 
 const app = express();
-app.use(express.static(ROOT));
 app.use(express.json());
 
 // ================= Shortlinks (link + QR cortos, con atribución de canal) =================
@@ -47,7 +46,131 @@ function getRedisClient() {
   return redisClient;
 }
 
-app.post('/api/shorten', async function (req, res) {
+// ================= Cuentas (admin + clientes) y autenticación =================
+// HTTP Basic Auth respaldado en Redis, sin sesiones/cookies ni dependencias
+// nuevas (bcrypt/passport/jsonwebtoken): el navegador cachea las credenciales
+// por origen y las reenvía solo en los fetch() que ya hacen configurador.html
+// y dashboard.html. Desactivar una cuenta la corta al instante, sin sesión
+// que revocar.
+const AUTH_REALM = 'ARhook';
+
+function accountKey(username) {
+  return 'account:' + String(username).trim().toLowerCase();
+}
+
+function hashPassword(password, salt) {
+  return crypto.scryptSync(String(password), salt, 64).toString('hex');
+}
+
+function verifyPassword(password, salt, expectedHash) {
+  const candidate = Buffer.from(hashPassword(password, salt), 'hex');
+  const expected = Buffer.from(String(expectedHash), 'hex');
+  if (candidate.length !== expected.length) return false;
+  return crypto.timingSafeEqual(candidate, expected);
+}
+
+async function getAccount(username) {
+  const redis = getRedisClient();
+  if (!redis || !username) return null;
+  const raw = await redis.get(accountKey(username));
+  if (!raw) return null;
+  return typeof raw === 'string' ? JSON.parse(raw) : raw;
+}
+
+async function saveAccount(username, account) {
+  const redis = getRedisClient();
+  await redis.set(accountKey(username), JSON.stringify(account));
+}
+
+async function listAccounts() {
+  const redis = getRedisClient();
+  if (!redis) return [];
+  const keys = await redis.keys('account:*');
+  if (!keys || keys.length === 0) return [];
+  const accounts = await Promise.all(
+    keys.map(async function (key) {
+      const raw = await redis.get(key);
+      const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return Object.assign({ username: key.slice('account:'.length) }, data);
+    })
+  );
+  return accounts;
+}
+
+function parseBasicAuth(req) {
+  const header = req.headers.authorization || '';
+  if (!header.startsWith('Basic ')) return null;
+  try {
+    const decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
+    const idx = decoded.indexOf(':');
+    if (idx === -1) return null;
+    return { username: decoded.slice(0, idx), password: decoded.slice(idx + 1) };
+  } catch (e) {
+    return null;
+  }
+}
+
+// requireAuth() acepta cualquier cuenta activa; requireAuth('admin') exige ese rol.
+function requireAuth(role) {
+  return async function (req, res, next) {
+    const creds = parseBasicAuth(req);
+    if (!creds) {
+      res.set('WWW-Authenticate', 'Basic realm="' + AUTH_REALM + '"');
+      return res.status(401).send('Ingresá tu usuario y contraseña.');
+    }
+    try {
+      const account = await getAccount(creds.username);
+      if (!account || !account.active || !verifyPassword(creds.password, account.salt, account.passwordHash)) {
+        res.set('WWW-Authenticate', 'Basic realm="' + AUTH_REALM + '"');
+        return res.status(401).send('Usuario o contraseña incorrectos, o cuenta desactivada.');
+      }
+      if (role && account.role !== role) {
+        return res.status(403).send('No tenés permiso para acceder a esta sección.');
+      }
+      req.account = {
+        username: String(creds.username).trim().toLowerCase(),
+        role: account.role,
+        businessName: account.businessName,
+        campaignIds: account.campaignIds || [],
+      };
+      next();
+    } catch (err) {
+      console.error('[auth] error:', err);
+      res.status(500).send('No se pudo verificar el acceso.');
+    }
+  };
+}
+
+async function bootstrapAdminAccount() {
+  const redis = getRedisClient();
+  if (!redis) return;
+  if (!process.env.ADMIN_USER || !process.env.ADMIN_PASSWORD) return;
+  const existing = await getAccount(process.env.ADMIN_USER);
+  if (existing) return;
+  const salt = crypto.randomBytes(16).toString('hex');
+  await saveAccount(process.env.ADMIN_USER, {
+    passwordHash: hashPassword(process.env.ADMIN_PASSWORD, salt),
+    salt: salt,
+    role: 'admin',
+    active: true,
+    businessName: 'Admin',
+    campaignIds: [],
+  });
+  console.log('[AR FLOW] Cuenta admin creada para "' + process.env.ADMIN_USER + '".');
+}
+
+// Rutas explícitas ANTES de express.static para que la autenticación
+// intercepte antes de que el archivo se sirva como estático.
+app.get('/configurador.html', requireAuth('admin'), function (req, res) {
+  res.sendFile(path.join(ROOT, 'configurador.html'));
+});
+app.get('/dashboard.html', requireAuth(), function (req, res) {
+  res.sendFile(path.join(ROOT, 'dashboard.html'));
+});
+
+app.use(express.static(ROOT));
+
+app.post('/api/shorten', requireAuth('admin'), async function (req, res) {
   const redis = getRedisClient();
   if (!redis) {
     return res.status(500).json({ error: 'El servidor no tiene configurado el shortlink (faltan las variables de entorno de Upstash Redis).' });
@@ -158,7 +281,7 @@ const uploadLogo = multer({
   },
 });
 
-app.post('/api/upload-logo', function (req, res) {
+app.post('/api/upload-logo', requireAuth('admin'), function (req, res) {
   uploadLogo.single('logo')(req, res, async function (err) {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
@@ -236,7 +359,7 @@ function getAnthropicClient() {
   return anthropicClient;
 }
 
-app.post('/api/extract-business-info', function (req, res) {
+app.post('/api/extract-business-info', requireAuth('admin'), function (req, res) {
   uploadDoc.single('doc')(req, res, async function (err) {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
@@ -294,6 +417,139 @@ app.post('/api/extract-business-info', function (req, res) {
   });
 });
 
+// ================= Contadores de rendimiento por campaña =================
+// Camino paralelo y liviano al envío a Make (assets/js/crm.js:pingStats):
+// solo cuenta, no reemplaza ni depende del registro en el Sheet del cliente.
+const STATS_EVENT_TYPES = ['jugado', 'ganado', 'reclamado'];
+
+app.post('/api/log-event', async function (req, res) {
+  const redis = getRedisClient();
+  if (!redis) return res.status(204).end(); // sin Redis no hay dónde contar; no es un error para el visitante
+
+  const cid = req.body && req.body.cid;
+  const type = req.body && req.body.type;
+  if (!cid || typeof cid !== 'string' || STATS_EVENT_TYPES.indexOf(type) === -1) {
+    return res.status(400).json({ error: 'Falta cid o type inválido.' });
+  }
+
+  try {
+    await redis.hincrby('stats:' + cid, type, 1);
+    res.status(204).end();
+  } catch (err) {
+    console.error('[log-event] error de Redis:', err);
+    res.status(204).end(); // fire-and-forget desde el navegador del visitante: nunca lo bloqueamos por esto
+  }
+});
+
+async function getStatsForCid(cid) {
+  const redis = getRedisClient();
+  if (!redis) return { jugado: 0, ganado: 0, reclamado: 0 };
+  const raw = await redis.hgetall('stats:' + cid);
+  return {
+    jugado: parseInt((raw && raw.jugado) || 0, 10),
+    ganado: parseInt((raw && raw.ganado) || 0, 10),
+    reclamado: parseInt((raw && raw.reclamado) || 0, 10),
+  };
+}
+
+app.get('/api/stats', requireAuth(), async function (req, res) {
+  try {
+    if (req.account.role === 'admin') {
+      const accounts = await listAccounts();
+      const clients = await Promise.all(
+        accounts
+          .filter(function (a) { return a.role !== 'admin'; })
+          .map(async function (acc) {
+            const campaigns = await Promise.all(
+              (acc.campaignIds || []).map(async function (cid) {
+                return Object.assign({ cid: cid }, await getStatsForCid(cid));
+              })
+            );
+            return { username: acc.username, businessName: acc.businessName, active: acc.active, campaigns: campaigns };
+          })
+      );
+      return res.json({ clients: clients });
+    }
+
+    const campaigns = await Promise.all(
+      (req.account.campaignIds || []).map(async function (cid) {
+        return Object.assign({ cid: cid }, await getStatsForCid(cid));
+      })
+    );
+    res.json({ businessName: req.account.businessName, campaigns: campaigns });
+  } catch (err) {
+    console.error('[stats] error:', err);
+    res.status(502).json({ error: 'No se pudieron cargar las estadísticas.' });
+  }
+});
+
+// ================= Administración de cuentas de clientes =================
+app.get('/api/admin/accounts', requireAuth('admin'), async function (req, res) {
+  try {
+    const accounts = await listAccounts();
+    res.json({
+      accounts: accounts
+        .filter(function (a) { return a.role !== 'admin'; })
+        .map(function (a) {
+          return { username: a.username, businessName: a.businessName, active: a.active, campaignIds: a.campaignIds || [] };
+        }),
+    });
+  } catch (err) {
+    console.error('[admin/accounts] error:', err);
+    res.status(502).json({ error: 'No se pudieron cargar las cuentas.' });
+  }
+});
+
+app.post('/api/admin/accounts', requireAuth('admin'), async function (req, res) {
+  const username = req.body && req.body.username && String(req.body.username).trim().toLowerCase();
+  const password = req.body && req.body.password;
+  const businessName = req.body && req.body.businessName;
+  const cid = req.body && req.body.cid;
+  if (!username || !password || !businessName) {
+    return res.status(400).json({ error: 'Faltan username, password o businessName.' });
+  }
+
+  try {
+    const existing = await getAccount(username);
+    if (existing) return res.status(409).json({ error: 'Ya existe una cuenta con ese usuario.' });
+
+    const salt = crypto.randomBytes(16).toString('hex');
+    const account = {
+      passwordHash: hashPassword(password, salt),
+      salt: salt,
+      role: 'client',
+      active: true,
+      businessName: String(businessName).trim(),
+      campaignIds: cid ? [String(cid).trim()] : [],
+    };
+    await saveAccount(username, account);
+    res.status(201).json({ username: username, businessName: account.businessName, active: true, campaignIds: account.campaignIds });
+  } catch (err) {
+    console.error('[admin/accounts create] error:', err);
+    res.status(502).json({ error: 'No se pudo crear la cuenta.' });
+  }
+});
+
+app.patch('/api/admin/accounts/:username', requireAuth('admin'), async function (req, res) {
+  const username = String(req.params.username).trim().toLowerCase();
+  try {
+    const account = await getAccount(username);
+    if (!account) return res.status(404).json({ error: 'No existe esa cuenta.' });
+
+    if (typeof req.body.active === 'boolean') account.active = req.body.active;
+    if (req.body.addCampaignId && typeof req.body.addCampaignId === 'string') {
+      account.campaignIds = account.campaignIds || [];
+      const trimmed = req.body.addCampaignId.trim();
+      if (trimmed && account.campaignIds.indexOf(trimmed) === -1) account.campaignIds.push(trimmed);
+    }
+    await saveAccount(username, account);
+    res.json({ username: username, active: account.active, campaignIds: account.campaignIds });
+  } catch (err) {
+    console.error('[admin/accounts patch] error:', err);
+    res.status(502).json({ error: 'No se pudo actualizar la cuenta.' });
+  }
+});
+
 app.listen(PORT, function () {
   console.log('[AR FLOW] Servidor corriendo en http://localhost:' + PORT);
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -302,4 +558,10 @@ app.listen(PORT, function () {
   if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
     console.warn('[AR FLOW] Falta UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN en .env — el link corto y el QR del configurador no van a funcionar hasta que las configures.');
   }
+  if (!process.env.ADMIN_USER || !process.env.ADMIN_PASSWORD) {
+    console.warn('[AR FLOW] Falta ADMIN_USER / ADMIN_PASSWORD en .env — sin esto no se crea ninguna cuenta admin y NADIE (ni vos) va a poder entrar a /configurador.html ni a /dashboard.html.');
+  }
+  bootstrapAdminAccount().catch(function (err) {
+    console.error('[bootstrap-admin] error:', err);
+  });
 });

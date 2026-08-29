@@ -255,6 +255,7 @@
       session_id: state.sessionId,
       observaciones: 'Jugó - Pendiente de datos'
     });
+    window.ARFLOW.crm.pingStats(config.cid, 'jugado');
   }
 
   function mountGame(){
@@ -342,6 +343,7 @@
           session_id: state.sessionId,
           observaciones: 'Premio Ganado'
         });
+        window.ARFLOW.crm.pingStats(config.cid, 'ganado');
 
         goToPhase(phaseModal);
       });
@@ -362,6 +364,7 @@
       session_id: state.sessionId,
       observaciones: 'Premio Reclamado'
     });
+    window.ARFLOW.crm.pingStats(config.cid, 'reclamado');
 
     // Mensaje prolijo y personalizado: un bloque 💬/➡️ por cada pregunta que
     // el visitante efectivamente respondió (las que dejó en blanco no

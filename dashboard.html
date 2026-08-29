@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de Rendimiento — AR FLOW</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@700;800&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #0A0A0A;
+    --panel: #141414;
+    --cyan: #00E5FF;
+    --amber: #F5A623;
+    --text: #F2F5F5;
+    --muted: #9AA3A3;
+    --danger: #FF6B6B;
+    --ok: #3DDC84;
+  }
+  *{ box-sizing:border-box; }
+  html, body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:'Montserrat', sans-serif; }
+  h1, h2, h3{ font-family:'League Spartan', sans-serif; margin:0 0 4px; }
+  .wrap{ max-width:920px; margin:0 auto; padding:32px 20px 80px; }
+  header{ margin-bottom:28px; }
+  header h1{ font-size:1.5rem; font-weight:800; }
+  header p{ color:var(--muted); margin:6px 0 0; font-size:.9rem; }
+
+  section.card{
+    background:var(--panel); border:1px solid rgba(255,255,255,.08);
+    border-radius:16px; padding:22px 20px; margin-bottom:20px;
+  }
+  section.card h2{ font-size:1rem; font-weight:800; margin-bottom:14px; color:var(--cyan); }
+  section.card h3{ font-size:.88rem; font-weight:700; margin:18px 0 10px; }
+
+  label{ display:block; font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; font-weight:600; margin:0 0 6px; }
+  input[type=text], input[type=password]{
+    width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.16);
+    background:rgba(0,0,0,.35); color:var(--text); font-size:.9rem; font-family:inherit;
+  }
+  input:focus{ outline:none; border-color:var(--cyan); }
+  .status-msg{ font-size:.78rem; color:var(--muted); margin-top:8px; min-height:1em; }
+  .status-msg.ok{ color:var(--ok); }
+  .status-msg.error{ color:var(--danger); }
+
+  table{ width:100%; border-collapse:collapse; font-size:.85rem; }
+  th, td{ text-align:left; padding:9px 8px; border-bottom:1px solid rgba(255,255,255,.08); }
+  th{ color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; font-weight:700; }
+  td.num{ text-align:right; font-variant-numeric:tabular-nums; }
+  th.num{ text-align:right; }
+  .empty-row td{ color:var(--muted); font-style:italic; }
+
+  .badge{ display:inline-flex; align-items:center; gap:5px; font-size:.72rem; font-weight:700; padding:3px 9px; border-radius:999px; }
+  .badge.on{ background:rgba(61,220,132,.14); color:var(--ok); }
+  .badge.off{ background:rgba(255,107,107,.14); color:var(--danger); }
+
+  .client-block{ margin-bottom:22px; }
+  .client-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; flex-wrap:wrap; }
+  .client-head .name{ font-weight:700; font-size:.95rem; }
+  .client-head .meta{ color:var(--muted); font-size:.78rem; }
+
+  .btn{
+    padding:9px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.06); color:var(--text); font-family:inherit; font-size:.82rem;
+    cursor:pointer; white-space:nowrap;
+  }
+  .btn:disabled{ opacity:.5; cursor:default; }
+  .btn-primary{ background:var(--amber); color:#1A1200; border:none; font-weight:800; }
+  .btn-danger{ border-color:rgba(255,107,107,.4); color:var(--danger); background:transparent; }
+  .btn-ok{ border-color:rgba(61,220,132,.4); color:var(--ok); background:transparent; }
+
+  .new-client-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  @media (max-width:560px){ .new-client-grid{ grid-template-columns:1fr; } }
+
+  #login-hint{ display:none; }
+  #login-hint.visible{ display:block; }
+  #app{ display:none; }
+  #app.visible{ display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Panel de Rendimiento</h1>
+    <p>Cuánto jugó, ganó y reclamó cada campaña — sin abrir el Sheet de cada cliente.</p>
+  </header>
+
+  <section class="card" id="login-hint">
+    <h2>No se pudo cargar</h2>
+    <p class="status-msg error" id="login-hint-msg">No se pudieron cargar los datos. Recargá la página e ingresá tus credenciales cuando el navegador las pida.</p>
+  </section>
+
+  <div id="app">
+    <section class="card" id="admin-new-client" style="display:none;">
+      <h2>Dar de alta un cliente</h2>
+      <div class="new-client-grid">
+        <div>
+          <label for="nc-business">Nombre del negocio</label>
+          <input type="text" id="nc-business" placeholder="Ej. AS Estética">
+        </div>
+        <div>
+          <label for="nc-cid">ID de campaña (cid)</label>
+          <input type="text" id="nc-cid" placeholder="Se copia desde el configurador al generar el link">
+        </div>
+        <div>
+          <label for="nc-username">Usuario</label>
+          <input type="text" id="nc-username" placeholder="ej. asestetica">
+        </div>
+        <div>
+          <label for="nc-password">Contraseña</label>
+          <input type="password" id="nc-password" placeholder="Contraseña inicial">
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-create-client">Crear cuenta de cliente</button>
+      <p class="status-msg" id="create-client-msg"></p>
+    </section>
+
+    <section class="card" id="stats-section">
+      <h2 id="stats-title">Rendimiento</h2>
+      <div id="stats-body"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const appEl = document.getElementById('app');
+  const loginHint = document.getElementById('login-hint');
+  const statsBody = document.getElementById('stats-body');
+  const statsTitle = document.getElementById('stats-title');
+  const adminNewClient = document.getElementById('admin-new-client');
+
+  function conversion(campaign){
+    if (!campaign.jugado) return '—';
+    return Math.round((campaign.reclamado / campaign.jugado) * 100) + '%';
+  }
+
+  function campaignsTable(campaigns){
+    if (!campaigns || campaigns.length === 0){
+      return '<table><tbody><tr class="empty-row"><td>Todavía no hay campañas vinculadas a esta cuenta.</td></tr></tbody></table>';
+    }
+    const rows = campaigns.map(function(c){
+      return '<tr>' +
+        '<td>' + c.cid + '</td>' +
+        '<td class="num">' + c.jugado + '</td>' +
+        '<td class="num">' + c.ganado + '</td>' +
+        '<td class="num">' + c.reclamado + '</td>' +
+        '<td class="num">' + conversion(c) + '</td>' +
+        '</tr>';
+    }).join('');
+    return '<table><thead><tr>' +
+      '<th>Campaña</th><th class="num">Jugado</th><th class="num">Ganado</th><th class="num">Reclamado</th><th class="num">% Reclamado/Jugado</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function toggleActive(username, active, btn){
+    btn.disabled = true;
+    fetch('/api/admin/accounts/' + encodeURIComponent(username), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: active })
+    })
+      .then(function(r){ return r.json(); })
+      .then(function(){ loadStats(); })
+      .catch(function(){ btn.disabled = false; });
+  }
+
+  function renderAdmin(data){
+    adminNewClient.style.display = '';
+    statsTitle.textContent = 'Rendimiento — todos los clientes';
+
+    if (data.clients.length === 0){
+      statsBody.innerHTML = '<p class="status-msg">Todavía no diste de alta ningún cliente.</p>';
+      return;
+    }
+
+    statsBody.innerHTML = data.clients.map(function(client){
+      const badge = client.active
+        ? '<span class="badge on">● Activo</span>'
+        : '<span class="badge off">● Desactivado</span>';
+      const btnLabel = client.active ? 'Desactivar' : 'Activar';
+      const btnClass = client.active ? 'btn-danger' : 'btn-ok';
+      return '<div class="client-block">' +
+        '<div class="client-head">' +
+          '<div><span class="name">' + client.businessName + '</span> ' + badge + '</div>' +
+          '<button class="btn ' + btnClass + '" data-username="' + client.username + '" data-active="' + (!client.active) + '">' + btnLabel + '</button>' +
+        '</div>' +
+        campaignsTable(client.campaigns) +
+      '</div>';
+    }).join('');
+
+    statsBody.querySelectorAll('button[data-username]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        toggleActive(btn.getAttribute('data-username'), btn.getAttribute('data-active') === 'true', btn);
+      });
+    });
+  }
+
+  function renderClient(data){
+    statsTitle.textContent = 'Rendimiento — ' + data.businessName;
+    statsBody.innerHTML = campaignsTable(data.campaigns);
+  }
+
+  function loadStats(){
+    fetch('/api/stats')
+      .then(function(r){
+        if (!r.ok) throw new Error('No autorizado');
+        return r.json();
+      })
+      .then(function(data){
+        appEl.classList.add('visible');
+        loginHint.classList.remove('visible');
+        if (data.clients){
+          renderAdmin(data);
+        } else {
+          renderClient(data);
+        }
+      })
+      .catch(function(){
+        loginHint.classList.add('visible');
+      });
+  }
+
+  document.getElementById('btn-create-client').addEventListener('click', function(){
+    const msg = document.getElementById('create-client-msg');
+    const businessName = document.getElementById('nc-business').value.trim();
+    const cid = document.getElementById('nc-cid').value.trim();
+    const username = document.getElementById('nc-username').value.trim();
+    const password = document.getElementById('nc-password').value;
+
+    if (!businessName || !username || !password){
+      msg.textContent = 'Completá al menos negocio, usuario y contraseña.';
+      msg.className = 'status-msg error';
+      return;
+    }
+
+    fetch('/api/admin/accounts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ businessName: businessName, cid: cid, username: username, password: password })
+    })
+      .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+      .then(function(result){
+        if (!result.ok){
+          msg.textContent = result.data.error || 'No se pudo crear la cuenta.';
+          msg.className = 'status-msg error';
+          return;
+        }
+        msg.textContent = 'Cuenta creada. Pasale usuario y contraseña al cliente.';
+        msg.className = 'status-msg ok';
+        document.getElementById('nc-business').value = '';
+        document.getElementById('nc-cid').value = '';
+        document.getElementById('nc-username').value = '';
+        document.getElementById('nc-password').value = '';
+        loadStats();
+      })
+      .catch(function(){
+        msg.textContent = 'No se pudo crear la cuenta.';
+        msg.className = 'status-msg error';
+      });
+  });
+
+  loadStats();
+})();
+</script>
+</body>
+</html>
