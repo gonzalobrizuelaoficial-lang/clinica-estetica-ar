@@ -23,10 +23,10 @@
   *{ box-sizing:border-box; }
   html, body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:'Montserrat', sans-serif; }
   h1, h2, h3{ font-family:'League Spartan', sans-serif; margin:0 0 4px; }
-  .wrap{ max-width:920px; margin:0 auto; padding:32px 20px 80px; }
-  header{ margin-bottom:28px; }
   header h1{ font-size:1.5rem; font-weight:800; }
   header p{ color:var(--muted); margin:6px 0 0; font-size:.9rem; }
+
+  .centered-wrap{ max-width:600px; margin:60px auto; padding:0 20px; }
 
   section.card{
     background:var(--panel); border:1px solid rgba(255,255,255,.08);
@@ -36,12 +36,12 @@
   section.card h3{ font-size:.88rem; font-weight:700; margin:18px 0 10px; }
 
   label{ display:block; font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; font-weight:600; margin:0 0 6px; }
-  input[type=text], input[type=password], textarea{
+  input[type=text], input[type=password], textarea, select{
     width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.16);
     background:rgba(0,0,0,.35); color:var(--text); font-size:.9rem; font-family:inherit;
   }
   textarea{ resize:vertical; min-height:60px; }
-  input:focus, textarea:focus{ outline:none; border-color:var(--cyan); }
+  input:focus, textarea:focus, select:focus{ outline:none; border-color:var(--cyan); }
   .status-msg{ font-size:.78rem; color:var(--muted); margin-top:8px; min-height:1em; }
   .status-msg.ok{ color:var(--ok); }
   .status-msg.error{ color:var(--danger); }
@@ -71,7 +71,7 @@
   .btn{
     padding:9px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.2);
     background:rgba(255,255,255,.06); color:var(--text); font-family:inherit; font-size:.82rem;
-    cursor:pointer; white-space:nowrap;
+    cursor:pointer; white-space:nowrap; text-decoration:none; display:inline-block;
   }
   .btn:disabled{ opacity:.5; cursor:default; }
   .btn-primary{ background:var(--amber); color:#1A1200; border:none; font-weight:800; }
@@ -95,71 +95,146 @@
 
   .edit-form{ margin-top:14px; padding-top:14px; border-top:1px dashed rgba(255,255,255,.14); }
 
+  .chart-holder{ margin-top:10px; }
+  .chart-wrap{ margin-top:4px; }
+  .history-chart{ width:100%; height:140px; background:rgba(255,255,255,.03); border-radius:10px; display:block; }
+  .chart-legend{ display:flex; gap:14px; margin-top:6px; font-size:.72rem; color:var(--muted); flex-wrap:wrap; }
+  .chart-legend i{ display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; vertical-align:middle; }
+
+  /* ---------- Shell con navegación lateral (solo admin) ---------- */
+  .shell{ display:flex; align-items:flex-start; min-height:100vh; }
+  .sidebar{
+    width:200px; flex-shrink:0; background:var(--panel); border-right:1px solid rgba(255,255,255,.08);
+    padding:24px 16px; position:sticky; top:0; height:100vh; box-sizing:border-box;
+  }
+  .sidebar-title{ font-family:'League Spartan', sans-serif; font-weight:800; font-size:1.05rem; margin-bottom:22px; }
+  .nav-item{
+    display:block; width:100%; text-align:left; background:none; border:none; color:var(--muted);
+    font-family:inherit; font-size:.88rem; font-weight:600; padding:10px 12px; border-radius:10px;
+    cursor:pointer; margin-bottom:4px;
+  }
+  .nav-item:hover{ background:rgba(255,255,255,.05); color:var(--text); }
+  .nav-item.active{ background:rgba(0,229,255,.12); color:var(--cyan); }
+  .main-content{ flex:1; min-width:0; display:flex; justify-content:center; padding:32px 28px 80px; box-sizing:border-box; }
+  .main-inner{ width:100%; max-width:900px; }
+  @media (max-width:720px){
+    .shell{ flex-direction:column; }
+    .sidebar{ width:100%; height:auto; position:static; display:flex; align-items:center; gap:6px; padding:14px 16px; overflow-x:auto; }
+    .sidebar-title{ margin:0 12px 0 0; white-space:nowrap; }
+    .nav-item{ width:auto; margin-bottom:0; white-space:nowrap; }
+  }
+
   #login-hint{ display:none; }
   #login-hint.visible{ display:block; }
   #app{ display:none; }
   #app.visible{ display:block; }
+
+  .report-sheet{ max-width:820px; margin:0 auto; padding:0 20px 60px; }
+  .report-actions{ display:flex; justify-content:space-between; align-items:center; margin:24px auto 0; max-width:820px; padding:0 20px; }
+  .report-chart-block{ margin-top:22px; }
+
+  @media print{
+    body{ background:#fff !important; color:#111 !important; }
+    .no-print{ display:none !important; }
+    .report-sheet section.card, .report-sheet table{ background:#fff !important; border-color:#ccc !important; }
+    th, td{ border-color:#ddd !important; color:#111 !important; }
+    th{ color:#555 !important; }
+    .status-msg{ color:#555 !important; }
+    .history-chart{ background:#fff !important; }
+    .line-jugado{ stroke:#0891b2; }
+    .line-ganado{ stroke:#c9791a; }
+    .line-reclamado{ stroke:#1f8f52; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Panel de Rendimiento</h1>
-    <p>Cuánto jugó, ganó y reclamó cada campaña — sin abrir el Sheet de cada cliente.</p>
-  </header>
 
-  <section class="card" id="login-hint">
+<div class="centered-wrap" id="login-hint">
+  <section class="card">
     <h2>No se pudo cargar</h2>
     <p class="status-msg error" id="login-hint-msg">No se pudieron cargar los datos. Recargá la página e ingresá tus credenciales cuando el navegador las pida.</p>
   </section>
+</div>
 
-  <div id="app">
-    <section class="card" id="admin-clients-section" style="display:none;">
-      <h2>Clientes</h2>
+<div id="app">
+  <div class="shell">
+    <aside class="sidebar no-print" id="sidebar" style="display:none;">
+      <div class="sidebar-title">AR FLOW</div>
+      <nav>
+        <button type="button" class="nav-item" id="nav-clientes" data-view="clientes">Clientes</button>
+        <button type="button" class="nav-item" id="nav-rendimiento" data-view="rendimiento">Rendimiento</button>
+      </nav>
+    </aside>
+    <main class="main-content">
+      <div class="main-inner">
+        <header>
+          <h1>Panel de Rendimiento</h1>
+          <p>Cuánto jugó, ganó y reclamó cada campaña — sin abrir el Sheet de cada cliente.</p>
+        </header>
 
-      <h3>Dar de alta un cliente</h3>
-      <div class="new-client-grid">
-        <div>
-          <label for="nc-business">Nombre del negocio</label>
-          <input type="text" id="nc-business" placeholder="Ej. AS Estética">
-        </div>
-        <div>
-          <label for="nc-cid">ID de campaña (cid)</label>
-          <input type="text" id="nc-cid" placeholder="Se copia desde el configurador al generar el link">
-        </div>
-        <div>
-          <label for="nc-username">Usuario</label>
-          <input type="text" id="nc-username" placeholder="ej. asestetica">
-        </div>
-        <div>
-          <label for="nc-password">Contraseña</label>
-          <input type="password" id="nc-password" placeholder="Contraseña inicial">
-        </div>
-        <div>
-          <label for="nc-phone">Teléfono de contacto</label>
-          <input type="text" id="nc-phone" placeholder="Opcional">
-        </div>
-        <div>
-          <label for="nc-email">Email de contacto</label>
-          <input type="text" id="nc-email" placeholder="Opcional">
-        </div>
+        <section class="card" id="view-clientes" style="display:none;">
+          <h2>Clientes</h2>
+
+          <h3>Dar de alta un cliente</h3>
+          <div class="new-client-grid">
+            <div>
+              <label for="nc-business">Nombre del negocio</label>
+              <input type="text" id="nc-business" placeholder="Ej. AS Estética">
+            </div>
+            <div>
+              <label for="nc-cid">ID de campaña (cid)</label>
+              <input type="text" id="nc-cid" placeholder="Se copia desde el configurador al generar el link">
+            </div>
+            <div>
+              <label for="nc-username">Usuario</label>
+              <input type="text" id="nc-username" placeholder="ej. asestetica">
+            </div>
+            <div>
+              <label for="nc-password">Contraseña</label>
+              <input type="password" id="nc-password" placeholder="Contraseña inicial">
+            </div>
+            <div>
+              <label for="nc-phone">Teléfono de contacto</label>
+              <input type="text" id="nc-phone" placeholder="Opcional">
+            </div>
+            <div>
+              <label for="nc-email">Email de contacto</label>
+              <input type="text" id="nc-email" placeholder="Opcional">
+            </div>
+            <div>
+              <label for="nc-plan">Plan</label>
+              <select id="nc-plan">
+                <option value="1">1 campaña/mes</option>
+                <option value="2">2 campañas/mes</option>
+              </select>
+            </div>
+          </div>
+          <label for="nc-notes">Notas</label>
+          <textarea id="nc-notes" placeholder="Opcional — condiciones, lo que sea útil recordar"></textarea>
+          <p></p>
+          <button class="btn btn-primary" id="btn-create-client">Crear cuenta de cliente</button>
+          <p class="status-msg" id="create-client-msg"></p>
+
+          <h3>Clientes existentes</h3>
+          <div id="clients-body"></div>
+        </section>
+
+        <section class="card" id="view-rendimiento">
+          <h2 id="stats-title">Rendimiento</h2>
+          <p class="status-msg">Estos números se cuentan en paralelo al Google Sheet de cada cliente (vía Make) — pueden no coincidir exactamente si algún envío falla en el camino.</p>
+          <div id="stats-body"></div>
+        </section>
       </div>
-      <label for="nc-notes">Notas</label>
-      <textarea id="nc-notes" placeholder="Opcional — plan, condiciones, lo que sea útil recordar"></textarea>
-      <p></p>
-      <button class="btn btn-primary" id="btn-create-client">Crear cuenta de cliente</button>
-      <p class="status-msg" id="create-client-msg"></p>
-
-      <h3>Clientes existentes</h3>
-      <div id="clients-body"></div>
-    </section>
-
-    <section class="card" id="stats-section">
-      <h2 id="stats-title">Rendimiento</h2>
-      <p class="status-msg">Estos números se cuentan en paralelo al Google Sheet de cada cliente (vía Make) — pueden no coincidir exactamente si algún envío falla en el camino.</p>
-      <div id="stats-body"></div>
-    </section>
+    </main>
   </div>
+</div>
+
+<div id="report-view" style="display:none;">
+  <div class="report-actions no-print">
+    <a class="btn" href="/dashboard.html">← Volver al panel</a>
+    <button type="button" class="btn btn-primary" id="btn-print-report">Imprimir / Guardar PDF</button>
+  </div>
+  <div class="report-sheet" id="report-sheet"></div>
 </div>
 
 <script>
@@ -170,8 +245,14 @@
   const loginHint = document.getElementById('login-hint');
   const statsBody = document.getElementById('stats-body');
   const statsTitle = document.getElementById('stats-title');
-  const adminClientsSection = document.getElementById('admin-clients-section');
+  const sidebar = document.getElementById('sidebar');
+  const viewClientes = document.getElementById('view-clientes');
+  const viewRendimiento = document.getElementById('view-rendimiento');
   const clientsBody = document.getElementById('clients-body');
+  const reportView = document.getElementById('report-view');
+  const reportSheet = document.getElementById('report-sheet');
+
+  const reportParam = new URLSearchParams(location.search).get('reporte');
 
   function conversion(campaign){
     if (!campaign.jugado) return '—';
@@ -188,6 +269,59 @@
     if (!ts) return '—';
     try { return new Date(ts).toLocaleDateString('es-AR'); } catch (e) { return '—'; }
   }
+
+  function planLabel(plan){
+    return plan === '2' ? '2 campañas/mes' : '1 campaña/mes';
+  }
+
+  // ---------- Gráfico de evolución (SVG inline, sin librerías) ----------
+
+  function renderHistoryChart(series){
+    if (!series || series.length === 0 || !series.some(function(d){ return d.jugado || d.ganado || d.reclamado; })){
+      return '<p class="status-msg">Sin datos suficientes todavía para graficar (el historial empieza a acumularse desde ahora).</p>';
+    }
+    const w = 560, h = 140, pad = 10;
+    const maxVal = Math.max(1, Math.max.apply(null, series.map(function(d){ return Math.max(d.jugado, d.ganado, d.reclamado); })));
+    function pathFor(key){
+      return series.map(function(d, i){
+        const x = pad + (series.length === 1 ? 0 : (i / (series.length - 1)) * (w - pad * 2));
+        const y = h - pad - (d[key] / maxVal) * (h - pad * 2);
+        return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+      }).join(' ');
+    }
+    return '<div class="chart-wrap">' +
+      '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" class="history-chart">' +
+        '<path class="line-jugado" d="' + pathFor('jugado') + '" fill="none" stroke="#00E5FF" stroke-width="2"/>' +
+        '<path class="line-ganado" d="' + pathFor('ganado') + '" fill="none" stroke="#F5A623" stroke-width="2"/>' +
+        '<path class="line-reclamado" d="' + pathFor('reclamado') + '" fill="none" stroke="#3DDC84" stroke-width="2"/>' +
+      '</svg>' +
+      '<div class="chart-legend">' +
+        '<span><i style="background:#00E5FF"></i>Jugado</span>' +
+        '<span><i style="background:#F5A623"></i>Ganado</span>' +
+        '<span><i style="background:#3DDC84"></i>Reclamado</span>' +
+      '</div>' +
+      '<p class="client-meta-line">' + escapeHtml(series[0].date) + ' — ' + escapeHtml(series[series.length - 1].date) + '</p>' +
+    '</div>';
+  }
+
+  function loadHistoryChart(cid, container){
+    fetch('/api/campaign-history/' + encodeURIComponent(cid) + '?days=30')
+      .then(function(r){ return r.json(); })
+      .then(function(data){ container.innerHTML = renderHistoryChart(data.series || []); })
+      .catch(function(){ container.innerHTML = '<p class="status-msg error">No se pudo cargar el gráfico.</p>'; });
+  }
+
+  function wireChartDetails(root){
+    root.querySelectorAll('.chart-details').forEach(function(details){
+      details.addEventListener('toggle', function(){
+        if (!details.open || details.dataset.loaded) return;
+        details.dataset.loaded = '1';
+        loadHistoryChart(details.getAttribute('data-cid'), details.querySelector('.chart-holder'));
+      });
+    });
+  }
+
+  // ---------- Tablas de campañas (compartidas entre Rendimiento, vista cliente y reporte) ----------
 
   function recentPlaysDetail(recentPlays){
     if (!recentPlays || recentPlays.length === 0){
@@ -208,11 +342,15 @@
       '<tbody>' + rows + '</tbody></table></details>';
   }
 
-  function campaignsTable(campaigns){
+  function campaignsTable(campaigns, includeChartToggle){
+    if (includeChartToggle === undefined) includeChartToggle = true;
     if (!campaigns || campaigns.length === 0){
       return '<table><tbody><tr class="empty-row"><td>Todavía no hay campañas vinculadas a esta cuenta.</td></tr></tbody></table>';
     }
     const rows = campaigns.map(function(c){
+      const chartToggle = includeChartToggle
+        ? '<details class="chart-details" data-cid="' + escapeHtml(c.cid) + '"><summary>Ver gráfico</summary><div class="chart-holder"><p class="status-msg">Cargando…</p></div></details>'
+        : '';
       return '<tr>' +
         '<td>' + escapeHtml(c.cid) + '</td>' +
         '<td class="num">' + c.jugado + '</td>' +
@@ -220,14 +358,14 @@
         '<td class="num">' + c.reclamado + '</td>' +
         '<td class="num">' + conversion(c) + '</td>' +
         '</tr>' +
-        '<tr><td colspan="5">' + recentPlaysDetail(c.recentPlays) + '</td></tr>';
+        '<tr><td colspan="5">' + recentPlaysDetail(c.recentPlays) + chartToggle + '</td></tr>';
     }).join('');
     return '<table><thead><tr>' +
       '<th>Campaña</th><th class="num">Jugado</th><th class="num">Ganado</th><th class="num">Reclamado</th><th class="num">% Reclamado/Jugado</th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table>';
   }
 
-  // ---------- Sección "Rendimiento" (solo lectura) ----------
+  // ---------- Vista "Rendimiento" (solo lectura) ----------
 
   function renderPerformance(data){
     if (data.clients){
@@ -247,11 +385,13 @@
       }).join('');
     } else {
       statsTitle.textContent = 'Rendimiento — ' + data.businessName;
-      statsBody.innerHTML = campaignsTable(data.campaigns);
+      statsBody.innerHTML = campaignsTable(data.campaigns) +
+        '<p class="status-msg"><a href="?reporte=propio">Ver reporte imprimible</a></p>';
     }
+    wireChartDetails(statsBody);
   }
 
-  // ---------- Sección "Clientes" (solo admin: alta, contacto, edición) ----------
+  // ---------- Vista "Clientes" (solo admin: alta, contacto, edición, borrado) ----------
 
   function toggleActive(username, active, btn){
     btn.disabled = true;
@@ -331,6 +471,28 @@
       });
   }
 
+  function deleteClient(username, businessName, btn){
+    const typed = window.prompt(
+      'Esto borra la cuenta de "' + businessName + '" Y TODOS los datos de sus campañas (jugadas, contadores, historial), para siempre. ' +
+      'No se puede deshacer. Escribí el nombre del negocio exacto para confirmar:'
+    );
+    if (typed === null) return;
+    if (typed.trim().toLowerCase() !== businessName.trim().toLowerCase()){
+      window.alert('El nombre no coincide. No se eliminó nada.');
+      return;
+    }
+    btn.disabled = true;
+    fetch('/api/admin/accounts/' + encodeURIComponent(username), { method: 'DELETE' })
+      .then(function(r){
+        if (!r.ok) throw new Error('delete failed');
+        loadStats();
+      })
+      .catch(function(){
+        btn.disabled = false;
+        window.alert('No se pudo eliminar el cliente.');
+      });
+  }
+
   function renderClients(clients){
     if (clients.length === 0){
       clientsBody.innerHTML = '<p class="status-msg">Todavía no diste de alta ningún cliente.</p>';
@@ -352,11 +514,13 @@
         '<div class="client-head">' +
           '<div><span class="name">' + escapeHtml(client.businessName) + '</span> ' + badge + '</div>' +
           '<div class="client-actions">' +
+            '<a class="btn" href="?reporte=' + encodeURIComponent(client.username) + '" target="_blank" rel="noopener">Ver reporte</a>' +
             '<button class="btn edit-toggle-btn" data-username="' + escapeHtml(client.username) + '">Editar cliente</button>' +
             '<button class="btn ' + btnClass + '" data-username="' + escapeHtml(client.username) + '" data-active="' + (!client.active) + '">' + btnLabel + '</button>' +
+            '<button class="btn btn-danger delete-client-btn" data-username="' + escapeHtml(client.username) + '" data-business="' + escapeHtml(client.businessName) + '">Eliminar cliente</button>' +
           '</div>' +
         '</div>' +
-        '<p class="client-meta-line">Usuario: ' + escapeHtml(client.username) + ' · Alta: ' + formatDate(client.createdAt) + '</p>' +
+        '<p class="client-meta-line">Usuario: ' + escapeHtml(client.username) + ' · Alta: ' + formatDate(client.createdAt) + ' · Plan: ' + planLabel(client.campaignPlan) + '</p>' +
         '<p class="client-meta-line">' + (client.contactPhone ? 'Tel: ' + escapeHtml(client.contactPhone) : 'Sin teléfono') + (client.contactEmail ? ' · Email: ' + escapeHtml(client.contactEmail) : '') + '</p>' +
         (client.notes ? '<p class="client-meta-line">Notas: ' + escapeHtml(client.notes) + '</p>' : '') +
         '<div class="campaign-ids-row">' + cids + '</div>' +
@@ -371,6 +535,10 @@
             '<div><label>Teléfono de contacto</label><input type="text" class="edit-phone" value="' + escapeHtml(client.contactPhone) + '"></div>' +
             '<div><label>Email de contacto</label><input type="text" class="edit-email" value="' + escapeHtml(client.contactEmail) + '"></div>' +
             '<div><label>Nueva contraseña</label><input type="password" class="edit-password" placeholder="Dejar vacío para no cambiarla"></div>' +
+            '<div><label>Plan</label><select class="edit-plan">' +
+              '<option value="1"' + (client.campaignPlan !== '2' ? ' selected' : '') + '>1 campaña/mes</option>' +
+              '<option value="2"' + (client.campaignPlan === '2' ? ' selected' : '') + '>2 campañas/mes</option>' +
+            '</select></div>' +
           '</div>' +
           '<label>Notas</label>' +
           '<textarea class="edit-notes">' + escapeHtml(client.notes) + '</textarea>' +
@@ -402,6 +570,12 @@
       });
     });
 
+    clientsBody.querySelectorAll('.delete-client-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        deleteClient(btn.getAttribute('data-username'), btn.getAttribute('data-business'), btn);
+      });
+    });
+
     clientsBody.querySelectorAll('.edit-toggle-btn').forEach(function(btn){
       btn.addEventListener('click', function(){
         const username = btn.getAttribute('data-username');
@@ -420,13 +594,47 @@
           businessName: form.querySelector('.edit-business').value.trim(),
           contactPhone: form.querySelector('.edit-phone').value.trim(),
           contactEmail: form.querySelector('.edit-email').value.trim(),
-          notes: form.querySelector('.edit-notes').value.trim()
+          notes: form.querySelector('.edit-notes').value.trim(),
+          campaignPlan: form.querySelector('.edit-plan').value
         };
         if (password) payload.password = password;
         saveClientEdit(username, payload, btn, msg);
       });
     });
   }
+
+  // ---------- Navegación lateral ----------
+
+  function setActiveView(view){
+    viewClientes.style.display = view === 'clientes' ? '' : 'none';
+    viewRendimiento.style.display = view === 'rendimiento' ? '' : 'none';
+    document.getElementById('nav-clientes').classList.toggle('active', view === 'clientes');
+    document.getElementById('nav-rendimiento').classList.toggle('active', view === 'rendimiento');
+  }
+  document.getElementById('nav-clientes').addEventListener('click', function(){ setActiveView('clientes'); });
+  document.getElementById('nav-rendimiento').addEventListener('click', function(){ setActiveView('rendimiento'); });
+
+  // ---------- Modo reporte (imprimible) ----------
+
+  function renderReport(client){
+    document.title = 'Reporte — ' + client.businessName;
+    reportSheet.innerHTML =
+      '<h1>' + escapeHtml(client.businessName) + '</h1>' +
+      '<p class="status-msg">Reporte generado el ' + new Date().toLocaleDateString('es-AR') + '</p>' +
+      campaignsTable(client.campaigns, false) +
+      (client.campaigns || []).map(function(c){
+        return '<div class="report-chart-block"><h3>Evolución — ' + escapeHtml(c.cid) + '</h3>' +
+          '<div class="chart-holder" data-cid="' + escapeHtml(c.cid) + '"><p class="status-msg">Cargando gráfico…</p></div></div>';
+      }).join('');
+
+    (client.campaigns || []).forEach(function(c){
+      loadHistoryChart(c.cid, reportSheet.querySelector('.chart-holder[data-cid="' + c.cid + '"]'));
+    });
+  }
+
+  document.getElementById('btn-print-report').addEventListener('click', function(){ window.print(); });
+
+  // ---------- Carga inicial ----------
 
   function loadStats(){
     fetch('/api/stats')
@@ -435,13 +643,33 @@
         return r.json();
       })
       .then(function(data){
-        appEl.classList.add('visible');
         loginHint.classList.remove('visible');
+
+        if (reportParam){
+          if (data.clients){
+            const match = data.clients.filter(function(c){ return c.username === reportParam; })[0];
+            if (match){
+              reportView.style.display = '';
+              renderReport(match);
+              return;
+            }
+            reportSheet.innerHTML = '<p class="status-msg error">No se encontró ese cliente.</p>';
+            reportView.style.display = '';
+            return;
+          }
+          reportView.style.display = '';
+          renderReport(data);
+          return;
+        }
+
+        appEl.classList.add('visible');
         if (data.clients){
-          adminClientsSection.style.display = '';
+          sidebar.style.display = '';
+          setActiveView('clientes');
           renderClients(data.clients);
         } else {
-          adminClientsSection.style.display = 'none';
+          sidebar.style.display = 'none';
+          setActiveView('rendimiento');
         }
         renderPerformance(data);
       })
@@ -459,6 +687,7 @@
     const contactPhone = document.getElementById('nc-phone').value.trim();
     const contactEmail = document.getElementById('nc-email').value.trim();
     const notes = document.getElementById('nc-notes').value.trim();
+    const campaignPlan = document.getElementById('nc-plan').value;
 
     if (!businessName || !username || !password){
       msg.textContent = 'Completá al menos negocio, usuario y contraseña.';
@@ -469,7 +698,10 @@
     fetch('/api/admin/accounts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ businessName: businessName, cid: cid, username: username, password: password, contactPhone: contactPhone, contactEmail: contactEmail, notes: notes })
+      body: JSON.stringify({
+        businessName: businessName, cid: cid, username: username, password: password,
+        contactPhone: contactPhone, contactEmail: contactEmail, notes: notes, campaignPlan: campaignPlan
+      })
     })
       .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
       .then(function(result){
@@ -487,6 +719,7 @@
         document.getElementById('nc-phone').value = '';
         document.getElementById('nc-email').value = '';
         document.getElementById('nc-notes').value = '';
+        document.getElementById('nc-plan').value = '1';
         loadStats();
       })
       .catch(function(){

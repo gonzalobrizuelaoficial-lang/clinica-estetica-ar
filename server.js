@@ -429,6 +429,22 @@ const STATS_EVENT_TYPES = ['jugado', 'ganado', 'reclamado'];
 // pero sí queda como detalle visible en el panel (ver 'plays:<cid>' abajo).
 const LOG_EVENT_TYPES = STATS_EVENT_TYPES.concat(['duplicado']);
 const RECENT_PLAYS_LIMIT = 20;
+// 'plays' se renueva en cada jugada nueva de esa campaña: una campaña activa
+// nunca lo pierde, y solo una completamente abandonada por un año entero lo
+// libera (sin afectar 'stats', que es el contador permanente). Con el TTL
+// viejo de 90 días una campaña de 91+ días de vida mostraba contadores sin
+// ningún detalle; sacarle el TTL del todo (como se probó antes) lo deja
+// creciendo para siempre y cada vista del panel termina trayendo TODO el
+// historial acumulado en vez de solo lo reciente — este es el punto medio.
+const PLAYS_TTL_DAYS = 365;
+// El detalle día a día para el gráfico de evolución sí puede podarse sin
+// perder nada importante: el total histórico ya vive para siempre en
+// 'stats:<cid>', esto es solo para dibujar la tendencia reciente.
+const DAILY_TTL_DAYS = 120;
+
+function dayKey(date) {
+  return date.toISOString().slice(0, 10);
+}
 
 app.post('/api/log-event', async function (req, res) {
   const redis = getRedisClient();
@@ -452,6 +468,14 @@ app.post('/api/log-event', async function (req, res) {
     } catch (err) {
       console.error('[log-event] error incrementando stats:' + cid, err);
     }
+
+    try {
+      const dailyKey = 'daily:' + cid + ':' + dayKey(new Date());
+      await redis.hincrby(dailyKey, type, 1);
+      await redis.expire(dailyKey, DAILY_TTL_DAYS * 86400);
+    } catch (err) {
+      console.error('[log-event] error incrementando daily:' + cid, err);
+    }
   }
 
   if (sessionId && typeof sessionId === 'string') {
@@ -464,11 +488,9 @@ app.post('/api/log-event', async function (req, res) {
         estado: (req.body && req.body.estado) || '',
         ts: Date.now(),
       };
-      // Sin TTL: a diferencia de 'played:' (anti-duplicado, sí debe vencer),
-      // este detalle debe convivir con 'stats:<cid>', que tampoco expira —
-      // si venciera antes, el panel mostraría contadores sin ningún detalle
-      // asociado en campañas de más de 90 días.
-      await redis.hset('plays:' + cid, { [sessionId]: JSON.stringify(detail) });
+      const playsKey = 'plays:' + cid;
+      await redis.hset(playsKey, { [sessionId]: JSON.stringify(detail) });
+      await redis.expire(playsKey, PLAYS_TTL_DAYS * 86400);
     } catch (err) {
       console.error('[log-event] error guardando detalle de jugada en plays:' + cid, err);
     }
@@ -501,6 +523,42 @@ async function getStatsForCid(cid) {
   };
 }
 
+const CAMPAIGN_HISTORY_DAYS_MIN = 1;
+const CAMPAIGN_HISTORY_DAYS_MAX = 90;
+
+app.get('/api/campaign-history/:cid', requireAuth(), async function (req, res) {
+  const cid = req.params.cid;
+  if (req.account.role !== 'admin' && req.account.campaignIds.indexOf(cid) === -1) {
+    return res.status(403).json({ error: 'No tenés acceso a esta campaña.' });
+  }
+
+  const days = Math.min(CAMPAIGN_HISTORY_DAYS_MAX, Math.max(CAMPAIGN_HISTORY_DAYS_MIN, parseInt(req.query.days, 10) || 30));
+  const redis = getRedisClient();
+  if (!redis) return res.json({ series: [] });
+
+  try {
+    const today = new Date();
+    const dates = [];
+    for (let i = days - 1; i >= 0; i--) {
+      dates.push(dayKey(new Date(today.getTime() - i * 86400000)));
+    }
+    const rawDays = await Promise.all(dates.map(function (d) { return redis.hgetall('daily:' + cid + ':' + d); }));
+    const series = dates.map(function (d, idx) {
+      const raw = rawDays[idx];
+      return {
+        date: d,
+        jugado: parseInt((raw && raw.jugado) || 0, 10),
+        ganado: parseInt((raw && raw.ganado) || 0, 10),
+        reclamado: parseInt((raw && raw.reclamado) || 0, 10),
+      };
+    });
+    res.json({ series: series });
+  } catch (err) {
+    console.error('[campaign-history] error:', err);
+    res.status(502).json({ error: 'No se pudo cargar el historial de la campaña.' });
+  }
+});
+
 app.get('/api/stats', requireAuth(), async function (req, res) {
   try {
     if (req.account.role === 'admin') {
@@ -523,6 +581,7 @@ app.get('/api/stats', requireAuth(), async function (req, res) {
               contactEmail: acc.contactEmail || '',
               notes: acc.notes || '',
               createdAt: acc.createdAt || null,
+              campaignPlan: acc.campaignPlan || '1',
             };
           })
       );
@@ -558,6 +617,7 @@ app.get('/api/admin/accounts', requireAuth('admin'), async function (req, res) {
             contactEmail: a.contactEmail || '',
             notes: a.notes || '',
             createdAt: a.createdAt || null,
+            campaignPlan: a.campaignPlan || '1',
           };
         }),
     });
@@ -575,6 +635,7 @@ app.post('/api/admin/accounts', requireAuth('admin'), async function (req, res) 
   const contactPhone = (req.body && req.body.contactPhone) || '';
   const contactEmail = (req.body && req.body.contactEmail) || '';
   const notes = (req.body && req.body.notes) || '';
+  const campaignPlan = (req.body && req.body.campaignPlan) || '1';
   if (!username || !password || !businessName) {
     return res.status(400).json({ error: 'Faltan username, password o businessName.' });
   }
@@ -594,6 +655,7 @@ app.post('/api/admin/accounts', requireAuth('admin'), async function (req, res) 
       contactPhone: String(contactPhone).trim(),
       contactEmail: String(contactEmail).trim(),
       notes: String(notes).trim(),
+      campaignPlan: String(campaignPlan).trim() || '1',
       createdAt: Date.now(),
     };
     await saveAccount(username, account);
@@ -605,6 +667,7 @@ app.post('/api/admin/accounts', requireAuth('admin'), async function (req, res) 
       contactPhone: account.contactPhone,
       contactEmail: account.contactEmail,
       notes: account.notes,
+      campaignPlan: account.campaignPlan,
       createdAt: account.createdAt,
     });
   } catch (err) {
@@ -636,6 +699,9 @@ app.patch('/api/admin/accounts/:username', requireAuth('admin'), async function 
     if (typeof req.body.contactPhone === 'string') account.contactPhone = req.body.contactPhone.trim();
     if (typeof req.body.contactEmail === 'string') account.contactEmail = req.body.contactEmail.trim();
     if (typeof req.body.notes === 'string') account.notes = req.body.notes.trim();
+    if (typeof req.body.campaignPlan === 'string' && req.body.campaignPlan.trim()) {
+      account.campaignPlan = req.body.campaignPlan.trim();
+    }
     if (req.body.password && typeof req.body.password === 'string') {
       const salt = crypto.randomBytes(16).toString('hex');
       account.passwordHash = hashPassword(req.body.password, salt);
@@ -650,10 +716,37 @@ app.patch('/api/admin/accounts/:username', requireAuth('admin'), async function 
       contactPhone: account.contactPhone || '',
       contactEmail: account.contactEmail || '',
       notes: account.notes || '',
+      campaignPlan: account.campaignPlan || '1',
     });
   } catch (err) {
     console.error('[admin/accounts patch] error:', err);
     res.status(502).json({ error: 'No se pudo actualizar la cuenta.' });
+  }
+});
+
+app.delete('/api/admin/accounts/:username', requireAuth('admin'), async function (req, res) {
+  const username = String(req.params.username).trim().toLowerCase();
+  try {
+    const account = await getAccount(username);
+    if (!account) return res.status(404).json({ error: 'No existe esa cuenta.' });
+
+    const redis = getRedisClient();
+    const cids = account.campaignIds || [];
+    await Promise.all(
+      cids.map(async function (cid) {
+        await redis.del('stats:' + cid);
+        await redis.del('plays:' + cid);
+        const dailyKeys = await redis.keys('daily:' + cid + ':*');
+        if (dailyKeys && dailyKeys.length) {
+          await Promise.all(dailyKeys.map(function (k) { return redis.del(k); }));
+        }
+      })
+    );
+    await redis.del(accountKey(username));
+    res.status(204).end();
+  } catch (err) {
+    console.error('[admin/accounts delete] error:', err);
+    res.status(502).json({ error: 'No se pudo eliminar la cuenta.' });
   }
 });
 
