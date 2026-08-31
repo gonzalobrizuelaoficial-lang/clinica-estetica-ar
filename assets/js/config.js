@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  window.ARFLOW = window.ARFLOW || {};
+  window.ARHOOK = window.ARHOOK || {};
 
   const DEFAULT_COLORS = { bg: '#0A0A0A', p: '#00E5FF', a: '#F5A623' };
 
@@ -89,7 +89,7 @@
       if (!raw) return normalizeConfig(null);
       return normalizeConfig(decodeConfig(raw));
     } catch (e) {
-      console.warn('[ARFLOW.config] cfg inválido en la URL, se usan defaults:', e);
+      console.warn('[ARHOOK.config] cfg inválido en la URL, se usan defaults:', e);
       return normalizeConfig(null);
     }
   }
@@ -99,7 +99,7 @@
     return params.get('canal') || '';
   }
 
-  window.ARFLOW.config = {
+  window.ARHOOK.config = {
     DEFAULT_CONFIG: DEFAULT_CONFIG,
     encodeConfig: encodeConfig,
     decodeConfig: decodeConfig,

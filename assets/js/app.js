@@ -1,7 +1,7 @@
 (function(){
   "use strict";
 
-  const config = window.ARFLOW.config.readConfigFromLocation();
+  const config = window.ARHOOK.config.readConfigFromLocation();
 
   // Identifica la sesión de este visitante en los 3 envíos a Make, para que
   // el escenario pueda buscar/actualizar la misma fila del Sheet aunque el
@@ -12,7 +12,7 @@
   }
 
   const state = {
-    canal: window.ARFLOW.config.readChannelFromLocation(),
+    canal: window.ARHOOK.config.readChannelFromLocation(),
     sessionId: generateSessionId(),
     nombre: '',
     whatsapp: '',
@@ -120,12 +120,12 @@
   // Tonos derivados de los 2 colores de marca (no un color fijo) para los
   // gradientes "glossy" y el glow de la ruleta/raspadita — así el efecto se
   // adapta al negocio en vez de verse igual para todos los clientes.
-  document.documentElement.style.setProperty('--amber-light', window.ARFLOW.colors.shade(config.colors.a, 0.45));
-  document.documentElement.style.setProperty('--amber-dark', window.ARFLOW.colors.shade(config.colors.a, -0.35));
-  document.documentElement.style.setProperty('--amber-glow', window.ARFLOW.colors.toRgba(config.colors.a, 0.55));
-  document.documentElement.style.setProperty('--cyan-light', window.ARFLOW.colors.shade(config.colors.p, 0.45));
-  document.documentElement.style.setProperty('--cyan-dark', window.ARFLOW.colors.shade(config.colors.p, -0.35));
-  document.documentElement.style.setProperty('--cyan-glow', window.ARFLOW.colors.toRgba(config.colors.p, 0.55));
+  document.documentElement.style.setProperty('--amber-light', window.ARHOOK.colors.shade(config.colors.a, 0.45));
+  document.documentElement.style.setProperty('--amber-dark', window.ARHOOK.colors.shade(config.colors.a, -0.35));
+  document.documentElement.style.setProperty('--amber-glow', window.ARHOOK.colors.toRgba(config.colors.a, 0.55));
+  document.documentElement.style.setProperty('--cyan-light', window.ARHOOK.colors.shade(config.colors.p, 0.45));
+  document.documentElement.style.setProperty('--cyan-dark', window.ARHOOK.colors.shade(config.colors.p, -0.35));
+  document.documentElement.style.setProperty('--cyan-glow', window.ARHOOK.colors.toRgba(config.colors.p, 0.55));
 
   // Hasta 2 preguntas opcionales (config.q, 0 a 2 elementos) — se renderiza
   // un campo por cada una, ninguno obligatorio.
@@ -253,8 +253,8 @@
     playWinJingle();
 
     // Candado 1: captura preventiva — el premio ya se sabe, nombre/whatsapp todavía no.
-    window.ARFLOW.crm.postToCRM(config.hook, {
-      fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+    window.ARHOOK.crm.postToCRM(config.hook, {
+      fecha: window.ARHOOK.crm.nowDDMMYYYYHHmm(),
       canal: state.canal,
       nombre: '',
       whatsapp: '',
@@ -264,9 +264,9 @@
       session_id: state.sessionId,
       observaciones: 'Jugó - Pendiente de datos'
     });
-    window.ARFLOW.crm.pingStats(config.cid, 'jugado', {
+    window.ARHOOK.crm.pingStats(config.cid, 'jugado', {
       sessionId: state.sessionId,
-      fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+      fecha: window.ARHOOK.crm.nowDDMMYYYYHHmm(),
       premio: premio,
       estado: 'Jugando'
     });
@@ -276,7 +276,7 @@
     if (config.game === 'scratch'){
       gameWheelContainer.style.display = 'none';
       gameScratchContainer.style.display = '';
-      window.ARFLOW.scratch.mount(
+      window.ARHOOK.scratch.mount(
         { canvas: scratchCanvas, prizeLabel: scratchPrizeLabel, btnReveal: btnReveal },
         config,
         { unlockAudio: unlockAudio, onComplete: onGameComplete }
@@ -284,7 +284,7 @@
     } else {
       gameScratchContainer.style.display = 'none';
       gameWheelContainer.style.display = '';
-      window.ARFLOW.wheel.mount(
+      window.ARHOOK.wheel.mount(
         { wheelGroup: wheelGroup, btnGirar: btnGirar },
         config,
         { unlockAudio: unlockAudio, playTick: playTick, onComplete: onGameComplete }
@@ -305,7 +305,7 @@
 
     state.nombre = claimNombre.value.trim();
     state.answeredPairs = collectAnsweredPairs();
-    state.whatsapp = window.ARFLOW.crm.formatWhatsapp(claimWhatsapp.value.trim());
+    state.whatsapp = window.ARHOOK.crm.formatWhatsapp(claimWhatsapp.value.trim());
 
     const pr = buildPreguntaRespuestaPayload(state.answeredPairs);
     state.preguntaCampo = pr.pregunta;
@@ -330,8 +330,8 @@
       .catch(function(){ return { duplicate: false }; }) // fail-open: no bloquear por un error de red
       .then(function(data){
         if (data && data.duplicate){
-          window.ARFLOW.crm.postToCRM(config.hook, {
-            fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+          window.ARHOOK.crm.postToCRM(config.hook, {
+            fecha: window.ARHOOK.crm.nowDDMMYYYYHHmm(),
             canal: state.canal,
             nombre: state.nombre,
             whatsapp: state.whatsapp,
@@ -341,9 +341,9 @@
             session_id: state.sessionId,
             observaciones: 'Intento Duplicado Bloqueado'
           });
-          window.ARFLOW.crm.pingStats(config.cid, 'duplicado', {
+          window.ARHOOK.crm.pingStats(config.cid, 'duplicado', {
             sessionId: state.sessionId,
-            fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+            fecha: window.ARHOOK.crm.nowDDMMYYYYHHmm(),
             nombre: state.nombre,
             whatsapp: state.whatsapp,
             premio: config.prizes[state.winningPrizeIndex].l,
@@ -354,8 +354,8 @@
         }
 
         // Candado 2: ahora sí van nombre/whatsapp/respuesta completos.
-        window.ARFLOW.crm.postToCRM(config.hook, {
-          fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+        window.ARHOOK.crm.postToCRM(config.hook, {
+          fecha: window.ARHOOK.crm.nowDDMMYYYYHHmm(),
           canal: state.canal,
           nombre: state.nombre,
           whatsapp: state.whatsapp,
@@ -365,9 +365,9 @@
           session_id: state.sessionId,
           observaciones: 'Premio Ganado'
         });
-        window.ARFLOW.crm.pingStats(config.cid, 'ganado', {
+        window.ARHOOK.crm.pingStats(config.cid, 'ganado', {
           sessionId: state.sessionId,
-          fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+          fecha: window.ARHOOK.crm.nowDDMMYYYYHHmm(),
           nombre: state.nombre,
           whatsapp: state.whatsapp,
           premio: config.prizes[state.winningPrizeIndex].l,
@@ -382,8 +382,8 @@
   btnReclamar.addEventListener('click', function(){
     const premio = config.prizes[state.winningPrizeIndex].l;
 
-    window.ARFLOW.crm.postToCRM(config.hook, {
-      fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+    window.ARHOOK.crm.postToCRM(config.hook, {
+      fecha: window.ARHOOK.crm.nowDDMMYYYYHHmm(),
       canal: state.canal,
       nombre: state.nombre,
       whatsapp: state.whatsapp,
@@ -393,9 +393,9 @@
       session_id: state.sessionId,
       observaciones: 'Premio Reclamado'
     });
-    window.ARFLOW.crm.pingStats(config.cid, 'reclamado', {
+    window.ARHOOK.crm.pingStats(config.cid, 'reclamado', {
       sessionId: state.sessionId,
-      fecha: window.ARFLOW.crm.nowDDMMYYYYHHmm(),
+      fecha: window.ARHOOK.crm.nowDDMMYYYYHHmm(),
       nombre: state.nombre,
       whatsapp: state.whatsapp,
       premio: premio,

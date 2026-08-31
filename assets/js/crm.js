@@ -1,8 +1,9 @@
 (function(){
   "use strict";
-  window.ARFLOW = window.ARFLOW || {};
+  window.ARHOOK = window.ARHOOK || {};
 
-  const PENDING_KEY = 'arflow_pending_crm';
+  const PENDING_KEY = 'arhook_pending_crm';
+  const PENDING_KEY_LEGACY = 'arflow_pending_crm';
   const PENDING_MAX = 20;
   const RETRY_DELAYS_MS = [0, 1500, 4000]; // intento inmediato, +1.5s, +4s
 
@@ -45,7 +46,15 @@
   function readPendingQueue(){
     try {
       const raw = window.localStorage.getItem(PENDING_KEY);
-      return raw ? JSON.parse(raw) : [];
+      if (raw) return JSON.parse(raw);
+      // Migración desde la key vieja (rebrand AR FLOW -> ARhook): recupera
+      // envíos que hayan quedado encolados en el navegador antes del deploy.
+      const legacy = window.localStorage.getItem(PENDING_KEY_LEGACY);
+      if (legacy){
+        window.localStorage.removeItem(PENDING_KEY_LEGACY);
+        return JSON.parse(legacy);
+      }
+      return [];
     } catch (e) {
       return [];
     }
@@ -106,12 +115,19 @@
     tryOnce();
   }
 
-  const PENDING_STATS_KEY = 'arflow_pending_stats';
+  const PENDING_STATS_KEY = 'arhook_pending_stats';
+  const PENDING_STATS_KEY_LEGACY = 'arflow_pending_stats';
 
   function readPendingStatsQueue(){
     try {
       const raw = window.localStorage.getItem(PENDING_STATS_KEY);
-      return raw ? JSON.parse(raw) : [];
+      if (raw) return JSON.parse(raw);
+      const legacy = window.localStorage.getItem(PENDING_STATS_KEY_LEGACY);
+      if (legacy){
+        window.localStorage.removeItem(PENDING_STATS_KEY_LEGACY);
+        return JSON.parse(legacy);
+      }
+      return [];
     } catch (e) {
       return [];
     }
@@ -181,7 +197,7 @@
     flushPendingStatsQueue();
   });
 
-  window.ARFLOW.crm = {
+  window.ARHOOK.crm = {
     nowDDMMYYYYHHmm: nowDDMMYYYYHHmm,
     formatWhatsapp: formatWhatsapp,
     postToCRM: postToCRM,

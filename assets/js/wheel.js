@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  window.ARFLOW = window.ARFLOW || {};
+  window.ARHOOK = window.ARHOOK || {};
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -114,7 +114,7 @@
   // Gradiente radial con brillo hacia arriba-izquierda (look "domo" glossy)
   // en vez del relleno plano de antes.
   function buildSectorGradient(defs, id, baseColor){
-    const shade = window.ARFLOW.colors.shade;
+    const shade = window.ARHOOK.colors.shade;
     const grad = document.createElementNS(SVG_NS, 'radialGradient');
     grad.setAttribute('id', id);
     grad.setAttribute('cx', '35%');
@@ -128,7 +128,7 @@
 
   // Sheen metálico diagonal para el aro/bezel que rodea la ruleta.
   function buildRimGradient(defs, id, accentColor){
-    const shade = window.ARFLOW.colors.shade;
+    const shade = window.ARHOOK.colors.shade;
     const grad = document.createElementNS(SVG_NS, 'linearGradient');
     grad.setAttribute('id', id);
     grad.setAttribute('x1', '0%'); grad.setAttribute('y1', '0%');
@@ -177,7 +177,7 @@
     rim.setAttribute('class', 'wheel-decor');
     svg.appendChild(rim);
 
-    const bulbColor = window.ARFLOW.colors.shade(config.colors.a, 0.65);
+    const bulbColor = window.ARHOOK.colors.shade(config.colors.a, 0.65);
     const bulbsGroup = document.createElementNS(SVG_NS, 'g');
     bulbsGroup.setAttribute('class', 'wheel-decor');
     bulbsGroup.setAttribute('filter', 'url(#' + bulbGlowId + ')');
@@ -274,7 +274,7 @@
         text.setAttribute('transform', 'rotate(' + midAngle + ' ' + textPos.x + ' ' + textPos.y + ')');
         text.setAttribute('font-family', 'League Spartan, sans-serif');
         text.setAttribute('font-weight', '800');
-        text.setAttribute('fill', window.ARFLOW.colors.contrastColor(fill));
+        text.setAttribute('fill', window.ARHOOK.colors.contrastColor(fill));
         text.setAttribute('paint-order', 'stroke');
         text.setAttribute('stroke', 'rgba(0,0,0,.35)');
         text.setAttribute('stroke-width', '2.2');
@@ -310,7 +310,7 @@
         });
       }
 
-      const winningPrizeIndex = window.ARFLOW.pickWeightedIndex(config.prizes);
+      const winningPrizeIndex = window.ARHOOK.pickWeightedIndex(config.prizes);
 
       const candidateSectors = [];
       for (let i = 0; i < wheelLayout.totalSectors; i++){
@@ -369,5 +369,5 @@
     });
   }
 
-  window.ARFLOW.wheel = { mount: mount };
+  window.ARHOOK.wheel = { mount: mount };
 })();

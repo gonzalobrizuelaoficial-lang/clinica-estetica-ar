@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Configurador de Campañas — AR FLOW</title>
+<title>Configurador de Campañas — ARhook</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -353,7 +353,7 @@
       logo: document.getElementById('f-logo').value.trim() || 'assets/logo.png'
     };
 
-    const encoded = window.ARFLOW.config.encodeConfig(cfg);
+    const encoded = window.ARHOOK.config.encodeConfig(cfg);
     const baseLink = new URL('index.html', window.location.href);
     baseLink.searchParams.set('cfg', encoded);
     baseLink.searchParams.set('canal', canalLink);

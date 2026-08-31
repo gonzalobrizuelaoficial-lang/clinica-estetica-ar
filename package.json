@@ -1,8 +1,8 @@
 {
-  "name": "demo-clinicas-ar-flow",
+  "name": "demo-clinicas-arhook",
   "version": "1.0.0",
   "private": true,
-  "description": "Servidor local del configurador AR FLOW: sirve el sitio estático y agrega subida de logo + extracción de datos de negocio con IA.",
+  "description": "Servidor local del configurador ARhook: sirve el sitio estático y agrega subida de logo + extracción de datos de negocio con IA.",
   "type": "commonjs",
   "engines": {
     "node": ">=18"

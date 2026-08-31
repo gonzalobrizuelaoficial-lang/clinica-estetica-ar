@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Panel de Rendimiento — AR FLOW</title>
+<title>Panel de Rendimiento — ARhook</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -210,7 +210,7 @@
 <div id="app">
   <div class="shell">
     <aside class="sidebar no-print" id="sidebar" style="display:none;">
-      <div class="sidebar-title">AR FLOW</div>
+      <div class="sidebar-title">ARhook</div>
       <nav>
         <button type="button" class="nav-item" id="nav-clientes" data-view="clientes">Clientes</button>
         <button type="button" class="nav-item" id="nav-rendimiento" data-view="rendimiento">Rendimiento</button>
@@ -258,7 +258,13 @@
               <select id="nc-plan">
                 <option value="1">1 campaña/mes</option>
                 <option value="2">2 campañas/mes</option>
+                <option value="3">3 campañas/mes</option>
+                <option value="4">4 campañas/mes</option>
               </select>
+            </div>
+            <div>
+              <label for="nc-price">Precio/mes (referencia interna)</label>
+              <input type="text" id="nc-price" placeholder="Opcional, ej. $15.000/mes">
             </div>
           </div>
           <label for="nc-notes">Notas</label>
@@ -457,7 +463,8 @@
   }
 
   function planLabel(plan){
-    return plan === '2' ? '2 campañas/mes' : '1 campaña/mes';
+    const n = parseInt(plan, 10) || 1;
+    return n + (n === 1 ? ' campaña/mes' : ' campañas/mes');
   }
 
   // ---------- Gráfico de evolución (SVG inline, sin librerías) ----------
@@ -591,7 +598,7 @@
       .catch(function(){ btn.disabled = false; });
   }
 
-  function addCampaignId(username, cid, input, btn, msg){
+  function addCampaignId(username, cid, campaignName, campaignSucursal, input, nameInput, sucursalInput, btn, msg){
     if (!cid){
       msg.textContent = 'Pegá el ID de campaña (cid) primero.';
       msg.className = 'status-msg error';
@@ -601,7 +608,7 @@
     fetch('/api/admin/accounts/' + encodeURIComponent(username), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ addCampaignId: cid })
+      body: JSON.stringify({ addCampaignId: cid, campaignName: campaignName, campaignSucursal: campaignSucursal })
     })
       .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
       .then(function(result){
@@ -612,6 +619,8 @@
           return;
         }
         input.value = '';
+        nameInput.value = '';
+        sucursalInput.value = '';
         loadStats();
       })
       .catch(function(){
@@ -692,7 +701,10 @@
       const btnLabel = client.active ? 'Desactivar' : 'Activar';
       const btnClass = client.active ? 'btn-danger' : 'btn-ok';
       const cids = (client.campaigns || []).map(function(c){
-        return '<span class="cid-chip">' + escapeHtml(c.cid) +
+        const meta = (client.campaignMeta || {})[c.cid] || {};
+        const label = [meta.name, meta.sucursal].filter(Boolean).join(' — ');
+        const chipText = label ? (label + ' (' + c.cid + ')') : c.cid;
+        return '<span class="cid-chip">' + escapeHtml(chipText) +
           ' <button type="button" class="remove-cid-btn" data-username="' + escapeHtml(client.username) + '" data-cid="' + escapeHtml(c.cid) + '" title="Quitar esta campaña de esta cuenta">×</button></span>';
       }).join('') || '<span class="status-msg">Sin campañas vinculadas.</span>';
 
@@ -706,12 +718,14 @@
             '<button class="btn btn-danger delete-client-btn" data-username="' + escapeHtml(client.username) + '" data-business="' + escapeHtml(client.businessName) + '">Eliminar cliente</button>' +
           '</div>' +
         '</div>' +
-        '<p class="client-meta-line">Usuario: ' + escapeHtml(client.username) + ' · Alta: ' + formatDate(client.createdAt) + ' · Plan: ' + planLabel(client.campaignPlan) + '</p>' +
+        '<p class="client-meta-line">Usuario: ' + escapeHtml(client.username) + ' · Alta: ' + formatDate(client.createdAt) + ' · Plan: ' + planLabel(client.campaignPlan) + (client.planPrice ? ' (' + escapeHtml(client.planPrice) + ')' : '') + '</p>' +
         '<p class="client-meta-line">' + (client.contactPhone ? 'Tel: ' + escapeHtml(client.contactPhone) : 'Sin teléfono') + (client.contactEmail ? ' · Email: ' + escapeHtml(client.contactEmail) : '') + '</p>' +
         (client.notes ? '<p class="client-meta-line">Notas: ' + escapeHtml(client.notes) + '</p>' : '') +
         '<div class="campaign-ids-row">' + cids + '</div>' +
         '<div class="add-cid-row">' +
           '<input type="text" class="add-cid-input" data-add-cid-username="' + escapeHtml(client.username) + '" placeholder="Pegar ID de campaña (cid) para vincularla a este cliente">' +
+          '<input type="text" class="add-cid-name" data-add-cid-username="' + escapeHtml(client.username) + '" placeholder="Nombre de campaña (opcional)">' +
+          '<input type="text" class="add-cid-sucursal" data-add-cid-username="' + escapeHtml(client.username) + '" placeholder="Sucursal / local (opcional)">' +
           '<button class="btn add-cid-btn" data-add-cid-username="' + escapeHtml(client.username) + '">Agregar campaña</button>' +
         '</div>' +
         '<p class="status-msg add-cid-msg" data-add-cid-username="' + escapeHtml(client.username) + '"></p>' +
@@ -722,9 +736,12 @@
             '<div><label>Email de contacto</label><input type="text" class="edit-email" value="' + escapeHtml(client.contactEmail) + '"></div>' +
             '<div><label>Nueva contraseña</label><input type="password" class="edit-password" placeholder="Dejar vacío para no cambiarla"></div>' +
             '<div><label>Plan</label><select class="edit-plan">' +
-              '<option value="1"' + (client.campaignPlan !== '2' ? ' selected' : '') + '>1 campaña/mes</option>' +
+              '<option value="1"' + ((client.campaignPlan || '1') === '1' ? ' selected' : '') + '>1 campaña/mes</option>' +
               '<option value="2"' + (client.campaignPlan === '2' ? ' selected' : '') + '>2 campañas/mes</option>' +
+              '<option value="3"' + (client.campaignPlan === '3' ? ' selected' : '') + '>3 campañas/mes</option>' +
+              '<option value="4"' + (client.campaignPlan === '4' ? ' selected' : '') + '>4 campañas/mes</option>' +
             '</select></div>' +
+            '<div><label>Precio/mes (referencia interna)</label><input type="text" class="edit-price" value="' + escapeHtml(client.planPrice || '') + '" placeholder="Opcional, ej. $15.000/mes"></div>' +
           '</div>' +
           '<label>Notas</label>' +
           '<textarea class="edit-notes">' + escapeHtml(client.notes) + '</textarea>' +
@@ -744,9 +761,11 @@
     clientsBody.querySelectorAll('.add-cid-btn').forEach(function(btn){
       const username = btn.getAttribute('data-add-cid-username');
       const input = clientsBody.querySelector('.add-cid-input[data-add-cid-username="' + username + '"]');
+      const nameInput = clientsBody.querySelector('.add-cid-name[data-add-cid-username="' + username + '"]');
+      const sucursalInput = clientsBody.querySelector('.add-cid-sucursal[data-add-cid-username="' + username + '"]');
       const msg = clientsBody.querySelector('.add-cid-msg[data-add-cid-username="' + username + '"]');
       btn.addEventListener('click', function(){
-        addCampaignId(username, input.value.trim(), input, btn, msg);
+        addCampaignId(username, input.value.trim(), nameInput.value.trim(), sucursalInput.value.trim(), input, nameInput, sucursalInput, btn, msg);
       });
     });
 
@@ -781,7 +800,8 @@
           contactPhone: form.querySelector('.edit-phone').value.trim(),
           contactEmail: form.querySelector('.edit-email').value.trim(),
           notes: form.querySelector('.edit-notes').value.trim(),
-          campaignPlan: form.querySelector('.edit-plan').value
+          campaignPlan: form.querySelector('.edit-plan').value,
+          planPrice: form.querySelector('.edit-price').value.trim()
         };
         if (password) payload.password = password;
         saveClientEdit(username, payload, btn, msg);
@@ -877,6 +897,7 @@
     const contactEmail = document.getElementById('nc-email').value.trim();
     const notes = document.getElementById('nc-notes').value.trim();
     const campaignPlan = document.getElementById('nc-plan').value;
+    const planPrice = document.getElementById('nc-price').value.trim();
 
     if (!businessName || !username || !password){
       msg.textContent = 'Completá al menos negocio, usuario y contraseña.';
@@ -889,7 +910,8 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         businessName: businessName, cid: cid, username: username, password: password,
-        contactPhone: contactPhone, contactEmail: contactEmail, notes: notes, campaignPlan: campaignPlan
+        contactPhone: contactPhone, contactEmail: contactEmail, notes: notes, campaignPlan: campaignPlan,
+        planPrice: planPrice
       })
     })
       .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
@@ -909,6 +931,7 @@
         document.getElementById('nc-email').value = '';
         document.getElementById('nc-notes').value = '';
         document.getElementById('nc-plan').value = '1';
+        document.getElementById('nc-price').value = '';
         loadStats();
       })
       .catch(function(){
@@ -1040,7 +1063,7 @@
       logo: document.getElementById('f-logo').value.trim() || 'assets/logo.png'
     };
 
-    const encoded = window.ARFLOW.config.encodeConfig(cfg);
+    const encoded = window.ARHOOK.config.encodeConfig(cfg);
     const baseLink = new URL('index.html', window.location.href);
     baseLink.searchParams.set('cfg', encoded);
     baseLink.searchParams.set('canal', canalLink);

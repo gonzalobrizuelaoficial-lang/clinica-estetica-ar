@@ -160,7 +160,7 @@ async function bootstrapAdminAccount() {
     notes: '',
     createdAt: Date.now(),
   });
-  console.log('[AR FLOW] Cuenta admin creada para "' + process.env.ADMIN_USER + '".');
+  console.log('[ARhook] Cuenta admin creada para "' + process.env.ADMIN_USER + '".');
 }
 
 // Rutas explícitas ANTES de express.static para que la autenticación
@@ -577,11 +577,13 @@ app.get('/api/stats', requireAuth(), async function (req, res) {
               businessName: acc.businessName,
               active: acc.active,
               campaigns: campaigns,
+              campaignMeta: acc.campaignMeta || {},
               contactPhone: acc.contactPhone || '',
               contactEmail: acc.contactEmail || '',
               notes: acc.notes || '',
               createdAt: acc.createdAt || null,
               campaignPlan: acc.campaignPlan || '1',
+              planPrice: acc.planPrice || '',
             };
           })
       );
@@ -613,11 +615,13 @@ app.get('/api/admin/accounts', requireAuth('admin'), async function (req, res) {
             businessName: a.businessName,
             active: a.active,
             campaignIds: a.campaignIds || [],
+            campaignMeta: a.campaignMeta || {},
             contactPhone: a.contactPhone || '',
             contactEmail: a.contactEmail || '',
             notes: a.notes || '',
             createdAt: a.createdAt || null,
             campaignPlan: a.campaignPlan || '1',
+            planPrice: a.planPrice || '',
           };
         }),
     });
@@ -636,6 +640,7 @@ app.post('/api/admin/accounts', requireAuth('admin'), async function (req, res) 
   const contactEmail = (req.body && req.body.contactEmail) || '';
   const notes = (req.body && req.body.notes) || '';
   const campaignPlan = (req.body && req.body.campaignPlan) || '1';
+  const planPrice = (req.body && req.body.planPrice) || '';
   if (!username || !password || !businessName) {
     return res.status(400).json({ error: 'Faltan username, password o businessName.' });
   }
@@ -652,10 +657,12 @@ app.post('/api/admin/accounts', requireAuth('admin'), async function (req, res) 
       active: true,
       businessName: String(businessName).trim(),
       campaignIds: cid ? [String(cid).trim()] : [],
+      campaignMeta: {},
       contactPhone: String(contactPhone).trim(),
       contactEmail: String(contactEmail).trim(),
       notes: String(notes).trim(),
       campaignPlan: String(campaignPlan).trim() || '1',
+      planPrice: String(planPrice).trim(),
       createdAt: Date.now(),
     };
     await saveAccount(username, account);
@@ -664,10 +671,12 @@ app.post('/api/admin/accounts', requireAuth('admin'), async function (req, res) 
       businessName: account.businessName,
       active: true,
       campaignIds: account.campaignIds,
+      campaignMeta: account.campaignMeta,
       contactPhone: account.contactPhone,
       contactEmail: account.contactEmail,
       notes: account.notes,
       campaignPlan: account.campaignPlan,
+      planPrice: account.planPrice,
       createdAt: account.createdAt,
     });
   } catch (err) {
@@ -685,13 +694,29 @@ app.patch('/api/admin/accounts/:username', requireAuth('admin'), async function 
     if (typeof req.body.active === 'boolean') account.active = req.body.active;
     if (req.body.addCampaignId && typeof req.body.addCampaignId === 'string') {
       account.campaignIds = account.campaignIds || [];
+      account.campaignMeta = account.campaignMeta || {};
       const trimmed = req.body.addCampaignId.trim();
-      if (trimmed && account.campaignIds.indexOf(trimmed) === -1) account.campaignIds.push(trimmed);
+      if (trimmed && account.campaignIds.indexOf(trimmed) === -1) {
+        const limit = parseInt(account.campaignPlan || '1', 10) || 1;
+        if (account.campaignIds.length >= limit) {
+          return res.status(400).json({
+            error: 'Esta cuenta ya alcanzó el límite de su plan (' + limit + ' campaña' + (limit === 1 ? '' : 's') + '). Subí el plan o quitá una campaña antes de agregar otra.',
+          });
+        }
+        account.campaignIds.push(trimmed);
+        const campaignName = typeof req.body.campaignName === 'string' ? req.body.campaignName.trim() : '';
+        const campaignSucursal = typeof req.body.campaignSucursal === 'string' ? req.body.campaignSucursal.trim() : '';
+        if (campaignName || campaignSucursal) {
+          account.campaignMeta[trimmed] = { name: campaignName, sucursal: campaignSucursal };
+        }
+      }
     }
     if (req.body.removeCampaignId && typeof req.body.removeCampaignId === 'string') {
       account.campaignIds = account.campaignIds || [];
+      account.campaignMeta = account.campaignMeta || {};
       const trimmed = req.body.removeCampaignId.trim();
       account.campaignIds = account.campaignIds.filter(function (c) { return c !== trimmed; });
+      delete account.campaignMeta[trimmed];
     }
     if (req.body.businessName && typeof req.body.businessName === 'string') {
       account.businessName = req.body.businessName.trim();
@@ -702,6 +727,7 @@ app.patch('/api/admin/accounts/:username', requireAuth('admin'), async function 
     if (typeof req.body.campaignPlan === 'string' && req.body.campaignPlan.trim()) {
       account.campaignPlan = req.body.campaignPlan.trim();
     }
+    if (typeof req.body.planPrice === 'string') account.planPrice = req.body.planPrice.trim();
     if (req.body.password && typeof req.body.password === 'string') {
       const salt = crypto.randomBytes(16).toString('hex');
       account.passwordHash = hashPassword(req.body.password, salt);
@@ -712,11 +738,13 @@ app.patch('/api/admin/accounts/:username', requireAuth('admin'), async function 
       username: username,
       active: account.active,
       campaignIds: account.campaignIds,
+      campaignMeta: account.campaignMeta || {},
       businessName: account.businessName,
       contactPhone: account.contactPhone || '',
       contactEmail: account.contactEmail || '',
       notes: account.notes || '',
       campaignPlan: account.campaignPlan || '1',
+      planPrice: account.planPrice || '',
     });
   } catch (err) {
     console.error('[admin/accounts patch] error:', err);
@@ -751,15 +779,15 @@ app.delete('/api/admin/accounts/:username', requireAuth('admin'), async function
 });
 
 app.listen(PORT, function () {
-  console.log('[AR FLOW] Servidor corriendo en http://localhost:' + PORT);
+  console.log('[ARhook] Servidor corriendo en http://localhost:' + PORT);
   if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn('[AR FLOW] Falta ANTHROPIC_API_KEY en .env — la extracción de documentos con IA no va a funcionar hasta que la configures.');
+    console.warn('[ARhook] Falta ANTHROPIC_API_KEY en .env — la extracción de documentos con IA no va a funcionar hasta que la configures.');
   }
   if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    console.warn('[AR FLOW] Falta UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN en .env — el link corto y el QR del configurador no van a funcionar hasta que las configures.');
+    console.warn('[ARhook] Falta UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN en .env — el link corto y el QR del configurador no van a funcionar hasta que las configures.');
   }
   if (!process.env.ADMIN_USER || !process.env.ADMIN_PASSWORD) {
-    console.warn('[AR FLOW] Falta ADMIN_USER / ADMIN_PASSWORD en .env — sin esto no se crea ninguna cuenta admin y NADIE (ni vos) va a poder entrar a /configurador.html ni a /dashboard.html.');
+    console.warn('[ARhook] Falta ADMIN_USER / ADMIN_PASSWORD en .env — sin esto no se crea ninguna cuenta admin y NADIE (ni vos) va a poder entrar a /configurador.html ni a /dashboard.html.');
   }
   bootstrapAdminAccount().catch(function (err) {
     console.error('[bootstrap-admin] error:', err);

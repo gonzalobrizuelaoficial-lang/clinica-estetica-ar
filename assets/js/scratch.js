@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  window.ARFLOW = window.ARFLOW || {};
+  window.ARHOOK = window.ARHOOK || {};
 
   const SCRATCH_THRESHOLD = 0.6;   // % de área raspada para dar por revelado el premio
   const BRUSH_RADIUS = 22;
@@ -36,12 +36,12 @@
     const btnReveal = refs.btnReveal;
     const ctx = canvas.getContext('2d');
 
-    const winningPrizeIndex = window.ARFLOW.pickWeightedIndex(config.prizes);
+    const winningPrizeIndex = window.ARHOOK.pickWeightedIndex(config.prizes);
     prizeLabel.textContent = config.prizes[winningPrizeIndex].l;
     // Antes era siempre var(--cyan) fijo, sin garantía de contraste; ahora
     // preferimos el color de marca principal, pero solo si se lee bien
     // contra el fondo — si no, caemos a blanco/negro de contraste seguro.
-    prizeLabel.style.color = window.ARFLOW.colors.pickReadableColor(config.colors.bg, config.colors.p);
+    prizeLabel.style.color = window.ARHOOK.colors.pickReadableColor(config.colors.bg, config.colors.p);
     fitLabelFont(prizeLabel);
 
     function drawCover(){
@@ -148,5 +148,5 @@
     window.addEventListener('resize', resizeCanvas);
   }
 
-  window.ARFLOW.scratch = { mount: mount };
+  window.ARHOOK.scratch = { mount: mount };
 })();

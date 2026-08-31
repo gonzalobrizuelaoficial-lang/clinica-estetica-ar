@@ -1,10 +1,10 @@
 (function(){
   "use strict";
-  window.ARFLOW = window.ARFLOW || {};
+  window.ARHOOK = window.ARHOOK || {};
 
   // Elige el índice de premio ganador según su peso relativo. Si todos los
   // pesos son 0/inválidos, cae a sorteo uniforme para no romper el juego.
-  window.ARFLOW.pickWeightedIndex = function(prizes){
+  window.ARHOOK.pickWeightedIndex = function(prizes){
     const total = prizes.reduce(function(sum, p){ return sum + (p.w > 0 ? p.w : 0); }, 0);
     if (total <= 0) return Math.floor(Math.random() * prizes.length);
     let r = Math.random() * total;

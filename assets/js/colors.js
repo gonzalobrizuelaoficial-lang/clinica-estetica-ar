@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  window.ARFLOW = window.ARFLOW || {};
+  window.ARHOOK = window.ARHOOK || {};
 
   function hexToRgb(hex){
     const clean = (hex || '').replace('#', '');
@@ -61,7 +61,7 @@
     return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
   }
 
-  window.ARFLOW.colors = {
+  window.ARHOOK.colors = {
     hexToRgb: hexToRgb,
     relativeLuminance: relativeLuminance,
     contrastRatio: contrastRatio,
