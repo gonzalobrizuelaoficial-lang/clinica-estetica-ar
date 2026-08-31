@@ -36,11 +36,12 @@
   section.card h3{ font-size:.88rem; font-weight:700; margin:18px 0 10px; }
 
   label{ display:block; font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; font-weight:600; margin:0 0 6px; }
-  input[type=text], input[type=password]{
+  input[type=text], input[type=password], textarea{
     width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.16);
     background:rgba(0,0,0,.35); color:var(--text); font-size:.9rem; font-family:inherit;
   }
-  input:focus{ outline:none; border-color:var(--cyan); }
+  textarea{ resize:vertical; min-height:60px; }
+  input:focus, textarea:focus{ outline:none; border-color:var(--cyan); }
   .status-msg{ font-size:.78rem; color:var(--muted); margin-top:8px; min-height:1em; }
   .status-msg.ok{ color:var(--ok); }
   .status-msg.error{ color:var(--danger); }
@@ -60,10 +61,12 @@
   .badge.on{ background:rgba(61,220,132,.14); color:var(--ok); }
   .badge.off{ background:rgba(255,107,107,.14); color:var(--danger); }
 
-  .client-block{ margin-bottom:22px; }
-  .client-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; flex-wrap:wrap; }
+  .client-block{ margin-bottom:22px; padding-bottom:18px; border-bottom:1px solid rgba(255,255,255,.06); }
+  .client-block:last-child{ border-bottom:none; margin-bottom:0; padding-bottom:0; }
+  .client-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; flex-wrap:wrap; }
   .client-head .name{ font-weight:700; font-size:.95rem; }
-  .client-head .meta{ color:var(--muted); font-size:.78rem; }
+  .client-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .client-meta-line{ color:var(--muted); font-size:.78rem; margin:2px 0; }
 
   .btn{
     padding:9px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.2);
@@ -78,9 +81,19 @@
   .new-client-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
   @media (max-width:560px){ .new-client-grid{ grid-template-columns:1fr; } }
 
-  .add-cid-row{ display:flex; gap:10px; margin-top:14px; }
+  .campaign-ids-row{ margin:10px 0; }
+  .cid-chip{
+    display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.14); border-radius:999px; padding:4px 6px 4px 12px;
+    font-size:.78rem; margin:0 6px 6px 0;
+  }
+  .cid-chip button{ background:none; border:none; color:var(--danger); cursor:pointer; font-size:.85rem; line-height:1; padding:2px 6px; }
+
+  .add-cid-row{ display:flex; gap:10px; margin-top:10px; }
   .add-cid-row input{ flex:1; min-width:0; }
   @media (max-width:560px){ .add-cid-row{ flex-direction:column; } }
+
+  .edit-form{ margin-top:14px; padding-top:14px; border-top:1px dashed rgba(255,255,255,.14); }
 
   #login-hint{ display:none; }
   #login-hint.visible{ display:block; }
@@ -101,8 +114,10 @@
   </section>
 
   <div id="app">
-    <section class="card" id="admin-new-client" style="display:none;">
-      <h2>Dar de alta un cliente</h2>
+    <section class="card" id="admin-clients-section" style="display:none;">
+      <h2>Clientes</h2>
+
+      <h3>Dar de alta un cliente</h3>
       <div class="new-client-grid">
         <div>
           <label for="nc-business">Nombre del negocio</label>
@@ -120,13 +135,28 @@
           <label for="nc-password">Contraseña</label>
           <input type="password" id="nc-password" placeholder="Contraseña inicial">
         </div>
+        <div>
+          <label for="nc-phone">Teléfono de contacto</label>
+          <input type="text" id="nc-phone" placeholder="Opcional">
+        </div>
+        <div>
+          <label for="nc-email">Email de contacto</label>
+          <input type="text" id="nc-email" placeholder="Opcional">
+        </div>
       </div>
+      <label for="nc-notes">Notas</label>
+      <textarea id="nc-notes" placeholder="Opcional — plan, condiciones, lo que sea útil recordar"></textarea>
+      <p></p>
       <button class="btn btn-primary" id="btn-create-client">Crear cuenta de cliente</button>
       <p class="status-msg" id="create-client-msg"></p>
+
+      <h3>Clientes existentes</h3>
+      <div id="clients-body"></div>
     </section>
 
     <section class="card" id="stats-section">
       <h2 id="stats-title">Rendimiento</h2>
+      <p class="status-msg">Estos números se cuentan en paralelo al Google Sheet de cada cliente (vía Make) — pueden no coincidir exactamente si algún envío falla en el camino.</p>
       <div id="stats-body"></div>
     </section>
   </div>
@@ -140,7 +170,8 @@
   const loginHint = document.getElementById('login-hint');
   const statsBody = document.getElementById('stats-body');
   const statsTitle = document.getElementById('stats-title');
-  const adminNewClient = document.getElementById('admin-new-client');
+  const adminClientsSection = document.getElementById('admin-clients-section');
+  const clientsBody = document.getElementById('clients-body');
 
   function conversion(campaign){
     if (!campaign.jugado) return '—';
@@ -149,7 +180,13 @@
 
   function escapeHtml(s){
     return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function formatDate(ts){
+    if (!ts) return '—';
+    try { return new Date(ts).toLocaleDateString('es-AR'); } catch (e) { return '—'; }
   }
 
   function recentPlaysDetail(recentPlays){
@@ -177,7 +214,7 @@
     }
     const rows = campaigns.map(function(c){
       return '<tr>' +
-        '<td>' + c.cid + '</td>' +
+        '<td>' + escapeHtml(c.cid) + '</td>' +
         '<td class="num">' + c.jugado + '</td>' +
         '<td class="num">' + c.ganado + '</td>' +
         '<td class="num">' + c.reclamado + '</td>' +
@@ -189,6 +226,32 @@
       '<th>Campaña</th><th class="num">Jugado</th><th class="num">Ganado</th><th class="num">Reclamado</th><th class="num">% Reclamado/Jugado</th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table>';
   }
+
+  // ---------- Sección "Rendimiento" (solo lectura) ----------
+
+  function renderPerformance(data){
+    if (data.clients){
+      statsTitle.textContent = 'Rendimiento — todos los clientes';
+      if (data.clients.length === 0){
+        statsBody.innerHTML = '<p class="status-msg">Todavía no diste de alta ningún cliente.</p>';
+        return;
+      }
+      statsBody.innerHTML = data.clients.map(function(client){
+        const badge = client.active
+          ? '<span class="badge on">● Activo</span>'
+          : '<span class="badge off">● Desactivado</span>';
+        return '<div class="client-block">' +
+          '<div class="client-head"><div><span class="name">' + escapeHtml(client.businessName) + '</span> ' + badge + '</div></div>' +
+          campaignsTable(client.campaigns) +
+        '</div>';
+      }).join('');
+    } else {
+      statsTitle.textContent = 'Rendimiento — ' + data.businessName;
+      statsBody.innerHTML = campaignsTable(data.campaigns);
+    }
+  }
+
+  // ---------- Sección "Clientes" (solo admin: alta, contacto, edición) ----------
 
   function toggleActive(username, active, btn){
     btn.disabled = true;
@@ -232,54 +295,137 @@
       });
   }
 
-  function renderAdmin(data){
-    adminNewClient.style.display = '';
-    statsTitle.textContent = 'Rendimiento — todos los clientes';
+  function removeCampaignId(username, cid){
+    if (!window.confirm('¿Quitar la campaña "' + cid + '" de esta cuenta?')) return;
+    fetch('/api/admin/accounts/' + encodeURIComponent(username), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ removeCampaignId: cid })
+    })
+      .then(function(){ loadStats(); });
+  }
 
-    if (data.clients.length === 0){
-      statsBody.innerHTML = '<p class="status-msg">Todavía no diste de alta ningún cliente.</p>';
+  function saveClientEdit(username, payload, btn, msg){
+    btn.disabled = true;
+    fetch('/api/admin/accounts/' + encodeURIComponent(username), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
+      .then(function(result){
+        btn.disabled = false;
+        if (!result.ok){
+          msg.textContent = result.data.error || 'No se pudieron guardar los cambios.';
+          msg.className = 'status-msg error';
+          return;
+        }
+        msg.textContent = 'Cambios guardados.';
+        msg.className = 'status-msg ok';
+        loadStats();
+      })
+      .catch(function(){
+        btn.disabled = false;
+        msg.textContent = 'No se pudieron guardar los cambios.';
+        msg.className = 'status-msg error';
+      });
+  }
+
+  function renderClients(clients){
+    if (clients.length === 0){
+      clientsBody.innerHTML = '<p class="status-msg">Todavía no diste de alta ningún cliente.</p>';
       return;
     }
 
-    statsBody.innerHTML = data.clients.map(function(client){
+    clientsBody.innerHTML = clients.map(function(client){
       const badge = client.active
         ? '<span class="badge on">● Activo</span>'
         : '<span class="badge off">● Desactivado</span>';
       const btnLabel = client.active ? 'Desactivar' : 'Activar';
       const btnClass = client.active ? 'btn-danger' : 'btn-ok';
+      const cids = (client.campaigns || []).map(function(c){
+        return '<span class="cid-chip">' + escapeHtml(c.cid) +
+          ' <button type="button" class="remove-cid-btn" data-username="' + escapeHtml(client.username) + '" data-cid="' + escapeHtml(c.cid) + '" title="Quitar esta campaña de esta cuenta">×</button></span>';
+      }).join('') || '<span class="status-msg">Sin campañas vinculadas.</span>';
+
       return '<div class="client-block">' +
         '<div class="client-head">' +
-          '<div><span class="name">' + client.businessName + '</span> ' + badge + '</div>' +
-          '<button class="btn ' + btnClass + '" data-username="' + client.username + '" data-active="' + (!client.active) + '">' + btnLabel + '</button>' +
+          '<div><span class="name">' + escapeHtml(client.businessName) + '</span> ' + badge + '</div>' +
+          '<div class="client-actions">' +
+            '<button class="btn edit-toggle-btn" data-username="' + escapeHtml(client.username) + '">Editar cliente</button>' +
+            '<button class="btn ' + btnClass + '" data-username="' + escapeHtml(client.username) + '" data-active="' + (!client.active) + '">' + btnLabel + '</button>' +
+          '</div>' +
         '</div>' +
-        campaignsTable(client.campaigns) +
+        '<p class="client-meta-line">Usuario: ' + escapeHtml(client.username) + ' · Alta: ' + formatDate(client.createdAt) + '</p>' +
+        '<p class="client-meta-line">' + (client.contactPhone ? 'Tel: ' + escapeHtml(client.contactPhone) : 'Sin teléfono') + (client.contactEmail ? ' · Email: ' + escapeHtml(client.contactEmail) : '') + '</p>' +
+        (client.notes ? '<p class="client-meta-line">Notas: ' + escapeHtml(client.notes) + '</p>' : '') +
+        '<div class="campaign-ids-row">' + cids + '</div>' +
         '<div class="add-cid-row">' +
-          '<input type="text" class="add-cid-input" data-add-cid-username="' + client.username + '" placeholder="Pegar ID de campaña (cid) para vincularla a este cliente">' +
-          '<button class="btn add-cid-btn" data-add-cid-username="' + client.username + '">Agregar campaña</button>' +
+          '<input type="text" class="add-cid-input" data-add-cid-username="' + escapeHtml(client.username) + '" placeholder="Pegar ID de campaña (cid) para vincularla a este cliente">' +
+          '<button class="btn add-cid-btn" data-add-cid-username="' + escapeHtml(client.username) + '">Agregar campaña</button>' +
         '</div>' +
-        '<p class="status-msg add-cid-msg" data-add-cid-username="' + client.username + '"></p>' +
+        '<p class="status-msg add-cid-msg" data-add-cid-username="' + escapeHtml(client.username) + '"></p>' +
+        '<div class="edit-form" data-edit-username="' + escapeHtml(client.username) + '" style="display:none;">' +
+          '<div class="new-client-grid">' +
+            '<div><label>Nombre del negocio</label><input type="text" class="edit-business" value="' + escapeHtml(client.businessName) + '"></div>' +
+            '<div><label>Teléfono de contacto</label><input type="text" class="edit-phone" value="' + escapeHtml(client.contactPhone) + '"></div>' +
+            '<div><label>Email de contacto</label><input type="text" class="edit-email" value="' + escapeHtml(client.contactEmail) + '"></div>' +
+            '<div><label>Nueva contraseña</label><input type="password" class="edit-password" placeholder="Dejar vacío para no cambiarla"></div>' +
+          '</div>' +
+          '<label>Notas</label>' +
+          '<textarea class="edit-notes">' + escapeHtml(client.notes) + '</textarea>' +
+          '<p></p>' +
+          '<button class="btn btn-primary save-edit-btn" data-username="' + escapeHtml(client.username) + '">Guardar cambios</button>' +
+          '<p class="status-msg edit-msg" data-edit-username="' + escapeHtml(client.username) + '"></p>' +
+        '</div>' +
       '</div>';
     }).join('');
 
-    statsBody.querySelectorAll('button[data-username]').forEach(function(btn){
+    clientsBody.querySelectorAll('button[data-username][data-active]').forEach(function(btn){
       btn.addEventListener('click', function(){
         toggleActive(btn.getAttribute('data-username'), btn.getAttribute('data-active') === 'true', btn);
       });
     });
 
-    statsBody.querySelectorAll('.add-cid-btn').forEach(function(btn){
+    clientsBody.querySelectorAll('.add-cid-btn').forEach(function(btn){
       const username = btn.getAttribute('data-add-cid-username');
-      const input = statsBody.querySelector('.add-cid-input[data-add-cid-username="' + username + '"]');
-      const msg = statsBody.querySelector('.add-cid-msg[data-add-cid-username="' + username + '"]');
+      const input = clientsBody.querySelector('.add-cid-input[data-add-cid-username="' + username + '"]');
+      const msg = clientsBody.querySelector('.add-cid-msg[data-add-cid-username="' + username + '"]');
       btn.addEventListener('click', function(){
         addCampaignId(username, input.value.trim(), input, btn, msg);
       });
     });
-  }
 
-  function renderClient(data){
-    statsTitle.textContent = 'Rendimiento — ' + data.businessName;
-    statsBody.innerHTML = campaignsTable(data.campaigns);
+    clientsBody.querySelectorAll('.remove-cid-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        removeCampaignId(btn.getAttribute('data-username'), btn.getAttribute('data-cid'));
+      });
+    });
+
+    clientsBody.querySelectorAll('.edit-toggle-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        const username = btn.getAttribute('data-username');
+        const form = clientsBody.querySelector('.edit-form[data-edit-username="' + username + '"]');
+        form.style.display = form.style.display === 'none' ? '' : 'none';
+      });
+    });
+
+    clientsBody.querySelectorAll('.save-edit-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        const username = btn.getAttribute('data-username');
+        const form = clientsBody.querySelector('.edit-form[data-edit-username="' + username + '"]');
+        const msg = clientsBody.querySelector('.edit-msg[data-edit-username="' + username + '"]');
+        const password = form.querySelector('.edit-password').value;
+        const payload = {
+          businessName: form.querySelector('.edit-business').value.trim(),
+          contactPhone: form.querySelector('.edit-phone').value.trim(),
+          contactEmail: form.querySelector('.edit-email').value.trim(),
+          notes: form.querySelector('.edit-notes').value.trim()
+        };
+        if (password) payload.password = password;
+        saveClientEdit(username, payload, btn, msg);
+      });
+    });
   }
 
   function loadStats(){
@@ -292,10 +438,12 @@
         appEl.classList.add('visible');
         loginHint.classList.remove('visible');
         if (data.clients){
-          renderAdmin(data);
+          adminClientsSection.style.display = '';
+          renderClients(data.clients);
         } else {
-          renderClient(data);
+          adminClientsSection.style.display = 'none';
         }
+        renderPerformance(data);
       })
       .catch(function(){
         loginHint.classList.add('visible');
@@ -308,6 +456,9 @@
     const cid = document.getElementById('nc-cid').value.trim();
     const username = document.getElementById('nc-username').value.trim();
     const password = document.getElementById('nc-password').value;
+    const contactPhone = document.getElementById('nc-phone').value.trim();
+    const contactEmail = document.getElementById('nc-email').value.trim();
+    const notes = document.getElementById('nc-notes').value.trim();
 
     if (!businessName || !username || !password){
       msg.textContent = 'Completá al menos negocio, usuario y contraseña.';
@@ -318,7 +469,7 @@
     fetch('/api/admin/accounts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ businessName: businessName, cid: cid, username: username, password: password })
+      body: JSON.stringify({ businessName: businessName, cid: cid, username: username, password: password, contactPhone: contactPhone, contactEmail: contactEmail, notes: notes })
     })
       .then(function(r){ return r.json().then(function(data){ return { ok: r.ok, data: data }; }); })
       .then(function(result){
@@ -333,6 +484,9 @@
         document.getElementById('nc-cid').value = '';
         document.getElementById('nc-username').value = '';
         document.getElementById('nc-password').value = '';
+        document.getElementById('nc-phone').value = '';
+        document.getElementById('nc-email').value = '';
+        document.getElementById('nc-notes').value = '';
         loadStats();
       })
       .catch(function(){

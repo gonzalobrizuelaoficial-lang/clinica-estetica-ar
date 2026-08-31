@@ -155,6 +155,10 @@ async function bootstrapAdminAccount() {
     active: true,
     businessName: 'Admin',
     campaignIds: [],
+    contactPhone: '',
+    contactEmail: '',
+    notes: '',
+    createdAt: Date.now(),
   });
   console.log('[AR FLOW] Cuenta admin creada para "' + process.env.ADMIN_USER + '".');
 }
@@ -424,9 +428,6 @@ const STATS_EVENT_TYPES = ['jugado', 'ganado', 'reclamado'];
 // 'duplicado' no suma a los contadores de arriba (no es una jugada nueva),
 // pero sí queda como detalle visible en el panel (ver 'plays:<cid>' abajo).
 const LOG_EVENT_TYPES = STATS_EVENT_TYPES.concat(['duplicado']);
-// Cuántos días se conserva el detalle de jugadas de una campaña sin actividad
-// antes de que Redis lo libere solo (mismo patrón TTL que 'played:' arriba).
-const PLAYS_TTL_DAYS = 90;
 const RECENT_PLAYS_LIMIT = 20;
 
 app.post('/api/log-event', async function (req, res) {
@@ -440,11 +441,21 @@ app.post('/api/log-event', async function (req, res) {
     return res.status(400).json({ error: 'Falta cid o type inválido.' });
   }
 
-  try {
-    if (STATS_EVENT_TYPES.indexOf(type) !== -1) {
+  // Los dos catch van separados a propósito: si el detalle de una jugada
+  // falla en guardarse, no queremos que quede indistinguible de un fallo al
+  // incrementar el contador (o al revés) — cada uno se loggea por su lado
+  // para poder ver en los logs de Render cuál de los dos caminos divergió,
+  // ya que ambos comparten el mismo 204 fire-and-forget hacia el visitante.
+  if (STATS_EVENT_TYPES.indexOf(type) !== -1) {
+    try {
       await redis.hincrby('stats:' + cid, type, 1);
+    } catch (err) {
+      console.error('[log-event] error incrementando stats:' + cid, err);
     }
-    if (sessionId && typeof sessionId === 'string') {
+  }
+
+  if (sessionId && typeof sessionId === 'string') {
+    try {
       const detail = {
         fecha: (req.body && req.body.fecha) || '',
         nombre: (req.body && req.body.nombre) || '',
@@ -453,15 +464,17 @@ app.post('/api/log-event', async function (req, res) {
         estado: (req.body && req.body.estado) || '',
         ts: Date.now(),
       };
-      const playsKey = 'plays:' + cid;
-      await redis.hset(playsKey, { [sessionId]: JSON.stringify(detail) });
-      await redis.expire(playsKey, PLAYS_TTL_DAYS * 86400);
+      // Sin TTL: a diferencia de 'played:' (anti-duplicado, sí debe vencer),
+      // este detalle debe convivir con 'stats:<cid>', que tampoco expira —
+      // si venciera antes, el panel mostraría contadores sin ningún detalle
+      // asociado en campañas de más de 90 días.
+      await redis.hset('plays:' + cid, { [sessionId]: JSON.stringify(detail) });
+    } catch (err) {
+      console.error('[log-event] error guardando detalle de jugada en plays:' + cid, err);
     }
-    res.status(204).end();
-  } catch (err) {
-    console.error('[log-event] error de Redis:', err);
-    res.status(204).end(); // fire-and-forget desde el navegador del visitante: nunca lo bloqueamos por esto
   }
+
+  res.status(204).end();
 });
 
 async function getStatsForCid(cid) {
@@ -501,7 +514,16 @@ app.get('/api/stats', requireAuth(), async function (req, res) {
                 return Object.assign({ cid: cid }, await getStatsForCid(cid));
               })
             );
-            return { username: acc.username, businessName: acc.businessName, active: acc.active, campaigns: campaigns };
+            return {
+              username: acc.username,
+              businessName: acc.businessName,
+              active: acc.active,
+              campaigns: campaigns,
+              contactPhone: acc.contactPhone || '',
+              contactEmail: acc.contactEmail || '',
+              notes: acc.notes || '',
+              createdAt: acc.createdAt || null,
+            };
           })
       );
       return res.json({ clients: clients });
@@ -527,7 +549,16 @@ app.get('/api/admin/accounts', requireAuth('admin'), async function (req, res) {
       accounts: accounts
         .filter(function (a) { return a.role !== 'admin'; })
         .map(function (a) {
-          return { username: a.username, businessName: a.businessName, active: a.active, campaignIds: a.campaignIds || [] };
+          return {
+            username: a.username,
+            businessName: a.businessName,
+            active: a.active,
+            campaignIds: a.campaignIds || [],
+            contactPhone: a.contactPhone || '',
+            contactEmail: a.contactEmail || '',
+            notes: a.notes || '',
+            createdAt: a.createdAt || null,
+          };
         }),
     });
   } catch (err) {
@@ -541,6 +572,9 @@ app.post('/api/admin/accounts', requireAuth('admin'), async function (req, res) 
   const password = req.body && req.body.password;
   const businessName = req.body && req.body.businessName;
   const cid = req.body && req.body.cid;
+  const contactPhone = (req.body && req.body.contactPhone) || '';
+  const contactEmail = (req.body && req.body.contactEmail) || '';
+  const notes = (req.body && req.body.notes) || '';
   if (!username || !password || !businessName) {
     return res.status(400).json({ error: 'Faltan username, password o businessName.' });
   }
@@ -557,9 +591,22 @@ app.post('/api/admin/accounts', requireAuth('admin'), async function (req, res) 
       active: true,
       businessName: String(businessName).trim(),
       campaignIds: cid ? [String(cid).trim()] : [],
+      contactPhone: String(contactPhone).trim(),
+      contactEmail: String(contactEmail).trim(),
+      notes: String(notes).trim(),
+      createdAt: Date.now(),
     };
     await saveAccount(username, account);
-    res.status(201).json({ username: username, businessName: account.businessName, active: true, campaignIds: account.campaignIds });
+    res.status(201).json({
+      username: username,
+      businessName: account.businessName,
+      active: true,
+      campaignIds: account.campaignIds,
+      contactPhone: account.contactPhone,
+      contactEmail: account.contactEmail,
+      notes: account.notes,
+      createdAt: account.createdAt,
+    });
   } catch (err) {
     console.error('[admin/accounts create] error:', err);
     res.status(502).json({ error: 'No se pudo crear la cuenta.' });
@@ -578,8 +625,32 @@ app.patch('/api/admin/accounts/:username', requireAuth('admin'), async function 
       const trimmed = req.body.addCampaignId.trim();
       if (trimmed && account.campaignIds.indexOf(trimmed) === -1) account.campaignIds.push(trimmed);
     }
+    if (req.body.removeCampaignId && typeof req.body.removeCampaignId === 'string') {
+      account.campaignIds = account.campaignIds || [];
+      const trimmed = req.body.removeCampaignId.trim();
+      account.campaignIds = account.campaignIds.filter(function (c) { return c !== trimmed; });
+    }
+    if (req.body.businessName && typeof req.body.businessName === 'string') {
+      account.businessName = req.body.businessName.trim();
+    }
+    if (typeof req.body.contactPhone === 'string') account.contactPhone = req.body.contactPhone.trim();
+    if (typeof req.body.contactEmail === 'string') account.contactEmail = req.body.contactEmail.trim();
+    if (typeof req.body.notes === 'string') account.notes = req.body.notes.trim();
+    if (req.body.password && typeof req.body.password === 'string') {
+      const salt = crypto.randomBytes(16).toString('hex');
+      account.passwordHash = hashPassword(req.body.password, salt);
+      account.salt = salt;
+    }
     await saveAccount(username, account);
-    res.json({ username: username, active: account.active, campaignIds: account.campaignIds });
+    res.json({
+      username: username,
+      active: account.active,
+      campaignIds: account.campaignIds,
+      businessName: account.businessName,
+      contactPhone: account.contactPhone || '',
+      contactEmail: account.contactEmail || '',
+      notes: account.notes || '',
+    });
   } catch (err) {
     console.error('[admin/accounts patch] error:', err);
     res.status(502).json({ error: 'No se pudo actualizar la cuenta.' });
